@@ -8,19 +8,27 @@ Follow these steps to set up project locally.
 
 ### 1. Clone the repository. 
 
-```git clone https://github.com/phloxxx/user-management-system.git```
+```
+git clone https://github.com/phloxxx/user-management-system.git
+```
 
 ### 2. Install dependencies:
 
-```npm install```
+```
+npm install
+```
 
 ### 3. Start the backend server:
 
-```npm start```
+```
+npm start
+```
 
 ### 4. Start the Angular app:
 
-```ng server```
+```
+ng server
+```
 
 ## Usage
 * Register a new account at */accounts/register*.
