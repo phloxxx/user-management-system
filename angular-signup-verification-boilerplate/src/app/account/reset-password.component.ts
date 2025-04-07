@@ -30,14 +30,19 @@ export class ResetPasswordComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        const token = this.route.snapshot.queryParams['token'];
+        if (!token) {
+            this.alertService.error('Verification token is missing');
+            this.router.navigate(['/account/login']);
+            return;
+        }
+
         this.form = this.formBuilder.group({
             password: ['', [Validators.required, Validators.minLength(6)]],
             confirmPassword: ['', Validators.required],
         }, {
             validator: MustMatch('password', 'confirmPassword')
         });
-    
-        const token = this.route.snapshot.queryParams['token'];
     
         // remove token from url to prevent http referer leakage
         this.router.navigate([], { relativeTo: this.route, replaceUrl: true });

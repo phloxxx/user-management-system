@@ -4,13 +4,12 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, finalize } from 'rxjs/operators';
 
-import { environment } from 'src/environments/environment';
+import { environment } from '../../environments/environment';
 import { Account } from '@app/_models';
-
-const baseUrl = `${environment.apiUrl}/accounts`;
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
+    private baseUrl = `${environment.apiUrl}/accounts`;
     private accountSubject: BehaviorSubject<Account>;
     public account: Observable<Account>;
 
@@ -27,7 +26,7 @@ export class AccountService {
     }
 
     login(email: string, password: string) {
-        return this.http.post<any>(`${baseUrl}/authenticate`, { email, password }, { withCredentials: true })
+        return this.http.post<any>(`${this.baseUrl}/authenticate`, { email, password }, { withCredentials: true })
             .pipe(map(account => {
                 this.accountSubject.next(account);
                 this.startRefreshTokenTimer();
@@ -36,14 +35,14 @@ export class AccountService {
     }
 
     logout() {
-        this.http.post<any>(`${baseUrl}/revoke-token`, {}, { withCredentials: true }).subscribe();
+        this.http.post<any>(`${this.baseUrl}/revoke-token`, {}, { withCredentials: true }).subscribe();
         this.stopRefreshTokenTimer();
         this.accountSubject.next(null);
         this.router.navigate(['/account/login']);
     }
 
     refreshToken() {
-        return this.http.post<any>(`${baseUrl}/refresh-token`, {}, { withCredentials: true })
+        return this.http.post<any>(`${this.baseUrl}/refresh-token`, {}, { withCredentials: true })
             .pipe(map(account => {
                 this.accountSubject.next(account);
                 this.startRefreshTokenTimer();
@@ -52,39 +51,39 @@ export class AccountService {
     }
 
     register(account: Account) {
-        return this.http.post(`${baseUrl}/register`, account);
+        return this.http.post(`${this.baseUrl}/register`, account, { withCredentials: true });
     }
 
     verifyEmail(token: string) {
-        return this.http.post(`${baseUrl}/verify-email`, { token });
+        return this.http.post(`${this.baseUrl}/verify-email`, { token }, { withCredentials: true });
     }
 
     forgotPassword(email: string) {
-        return this.http.post(`${baseUrl}/forgot-password`, { email });
+        return this.http.post(`${this.baseUrl}/forgot-password`, { email }, { withCredentials: true });
     }
 
     validateResetToken(token: string) {
-        return this.http.post(`${baseUrl}/validate-reset-token`, { token });
+        return this.http.post(`${this.baseUrl}/validate-reset-token`, { token }, { withCredentials: true });
     }
 
     resetPassword(token: string, password: string, confirmPassword: string) {
-        return this.http.post(`${baseUrl}/reset-password`, { token, password, confirmPassword });
+        return this.http.post(`${this.baseUrl}/reset-password`, { token, password, confirmPassword }, { withCredentials: true });
     }
 
     getAll() {
-        return this.http.get<Account[]>(baseUrl);
+        return this.http.get<Account[]>(this.baseUrl, { withCredentials: true });
     }
 
     getById(id: string) {
-        return this.http.get<Account>(`${baseUrl}/${id}`);
+        return this.http.get<Account>(`${this.baseUrl}/${id}`, { withCredentials: true });
     }
 
     create(params) {
-        return this.http.post(baseUrl, params);
+        return this.http.post(this.baseUrl, params, { withCredentials: true });
     }
 
-    update(id, parmas) {
-        return this.http.put(`${baseUrl}/${id}`, parmas)
+    update(id, params) {
+        return this.http.put(`${this.baseUrl}/${id}`, params, { withCredentials: true })
             .pipe(map((account: any) => {
                 // update the current account if it was updated
                 if (account.id === this.accountValue.id) {
@@ -97,7 +96,7 @@ export class AccountService {
     }
 
     delete(id: string) {
-        return this.http.delete(`${baseUrl}/${id}`)
+        return this.http.delete(`${this.baseUrl}/${id}`, { withCredentials: true })
             .pipe(finalize(() => {
                 // auto logout if the logged in account deleted their own record
                 if (id === this.accountValue.id)

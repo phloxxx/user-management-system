@@ -5,6 +5,7 @@
     {
       "type": "npm",
       "script": "start",
+      "path": "angular-signup-verification-boilerplate/",
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -18,7 +19,31 @@
             "regexp": "bundle generation complete"
           }
         }
-      }
+      },
+      "label": "npm: start - frontend"
+    },
+    {
+      "type": "npm",
+      "script": "start",
+      "path": "node-mysql-boilerplate-api/",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "nodejs",
+        "pattern": {
+          "regexp": "."
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server listening on port"
+        }
+      },
+      "label": "npm: start - backend"
+    },
+    {
+      "label": "Run Full Stack",
+      "dependsOn": ["npm: start - frontend", "npm: start - backend"],
+      "problemMatcher": []
     },
     {
       "type": "npm",
