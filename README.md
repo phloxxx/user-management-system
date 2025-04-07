@@ -36,8 +36,9 @@ ng serve
 * Log in at */accounts/login*.
 
 ## Testing
-### ***Functional testing results:** [Link to test cases]
+### **Functional testing results:** [Link to test cases]
 
+---
 ### **Security Testing Documentation**
 #### 1. XSS (Cross-Site Scripting)
 - **Status:** ❌ Vulnerable
