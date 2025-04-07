@@ -15,6 +15,7 @@ const routes: Routes = [
             { path: 'login', component: LoginComponent },
             { path: 'register', component: RegisterComponent},
             { path: 'verify-email', component: VerifyEmailComponent},
+            { path: 'forgot-password', component: ForgotPasswordComponent},
             { path: 'reset-password', component: ResetPasswordComponent }
         ]
     }
@@ -25,4 +26,4 @@ const routes: Routes = [
     exports: [RouterModule]
 })
 
-export class AccountRoutingModule {}
+export class AccountRoutingModule { }

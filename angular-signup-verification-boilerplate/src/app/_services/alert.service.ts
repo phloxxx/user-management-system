@@ -27,6 +27,10 @@ export class AlertService {
         this.alert(new Alert({ ...options, type: AlertType.Info, message }));
     }
 
+    warn(message: string, options?: any) {
+        this.alert(new Alert({ ...options, type: AlertType.Warning, message }));
+    }
+
     // core alert method
     alert(alert: Alert) {
         alert.id = alert.id || this.defaultId;
