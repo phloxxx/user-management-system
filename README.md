@@ -36,7 +36,7 @@ ng serve
 * Log in at */accounts/login*.
 
 ## Testing
-### **Functional testing results:** [Link to test cases]
+### **Functional testing results:** [https://docs.google.com/document/d/1zkrHnNJTvbq-L289UgOpzY6RdiAnttoRgajw37rYZjw/edit?tab=t.0]
 
 ---
 ### **Security Testing Documentation**
