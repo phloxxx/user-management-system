@@ -27,23 +27,34 @@ export class ForgotPasswordComponent implements OnInit {
 
     onSubmit() {
         this.submitted = true;
+        console.log('Form submitted, valid:', !this.form.invalid);
 
-        // reset alerts on submit
         this.alertService.clear();
 
-        // stop here if form is invalid
         if (this.form.invalid) {
             return;
         }
 
         this.loading = true;
-        this.alertService.clear();
+        console.log('Calling forgotPassword with:', this.f.email.value);
+        
         this.accountService.forgotPassword(this.f.email.value)
-            .pipe(first())
-            .pipe(finalize(() => this.loading = false))
+            .pipe(
+                first(),
+                finalize(() => {
+                    this.loading = false;
+                    console.log('Request completed');
+                })
+            )
             .subscribe({
-                next: () => this.alertService.success('Please check your email for password reset instructions'),
-                error: error => this.alertService.error(error)
+                next: () => {
+                    console.log('Success response received');
+                    this.alertService.success('Please check your email for password reset instructions');
+                },
+                error: error => {
+                    console.error('Error received:', error);
+                    this.alertService.error(error);
+                }
             });
     }
 }
