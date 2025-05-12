@@ -20,15 +20,38 @@ module.exports = {
     getById,
     create,
     update,
-    delete: _delete
+    delete: _delete,
+    updateStatus // Add this new service method
 };
 
+// Add this function to your service
+async function updateStatus(id, isActive) {
+    const account = await getAccount(id);
+    
+    // Don't allow changing status of admin accounts
+    if (account.role === Role.Admin) {
+        throw 'Cannot change status of administrator accounts';
+    }
+    
+    // Update account status
+    account.isActive = isActive;
+    account.updated = new Date();
+    await account.save();
 
+    return basicDetails(account);
+}
+
+// Modify the authenticate method to check if the account is active
 async function authenticate({ email, password, ipAddress }) {
     const account = await db.Account.scope('withHash').findOne({ where: { email } });
 
     if (!account || !account.isVerified || !(await bcrypt.compare(password, account.passwordHash))) {
         throw 'Email or password is incorrect';
+    }
+    
+    // Check if non-admin account is active before allowing login
+    if (account.role !== Role.Admin && !account.isActive) {
+        throw 'Your account has been deactivated. Please contact an administrator.';
     }
 
     // authentication successful so generate jwt and refresh tokens
@@ -244,8 +267,8 @@ function randomTokenString() {
 }
 
 function basicDetails(account) {
-    const { id, title, firstName, lastName, email, role, created, updated, isVerified } = account;
-    return { id, title, firstName, lastName, email, role, created, updated, isVerified };
+    const { id, title, firstName, lastName, email, role, created, updated, isVerified, isActive } = account;
+    return { id, title, firstName, lastName, email, role, created, updated, isVerified, isActive };
 }
 
 async function sendVerificationEmail(account, origin) {

@@ -18,6 +18,11 @@ function model(sequelize) {
         passwordReset: { type: DataTypes.DATE },
         created: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
         updated: { type: DataTypes.DATE },
+        isActive: { 
+            type: DataTypes.BOOLEAN, 
+            allowNull: false,
+            defaultValue: true
+        },
         isVerified: {
             type: DataTypes.VIRTUAL,
             get() { return !!(this.verified || this.passwordReset); }

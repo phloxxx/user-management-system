@@ -15,11 +15,14 @@ router.post('/verify-email', verifyEmailSchema, verifyEmail);
 router.post('/forgot-password', forgotPasswordSchema, forgotPassword);
 router.post('/validate-reset-token', validateResetTokenSchema, validateResetToken);
 router.post('/reset-password', resetPasswordSchema, resetPassword);
-router.get('/', authorize(Role.Admin), getAll);//
-router.get('/:id', authorize(), getById);//
+router.get('/', authorize(Role.Admin), getAll);
+router.get('/:id', authorize(), getById);
 router.post('/', authorize(Role.Admin), createSchema, create);
 router.put('/:id', authorize(), updateSchema, update);
 router.delete('/:id', authorize(), _delete);
+
+// Add new endpoint for updating account status
+router.put('/:id/status', authorize(Role.Admin), updateStatusSchema, updateStatus);
 
 module.exports = router;
 
@@ -226,6 +229,26 @@ function _delete(req, res, next) {
   accountService.delete(req.params.id)
       .then(() => res.json({ message: 'Account deleted successfully' }))
       .catch(next);
+}
+
+// Add this new schema validation function
+function updateStatusSchema(req, res, next) {
+  const schema = Joi.object({
+    isActive: Joi.boolean().required()
+  });
+  validateRequest(req, next, schema);
+}
+
+// Add this new controller function for status updates
+function updateStatus(req, res, next) {
+  // Users can't deactivate their own account
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ message: 'You cannot change your own account status' });
+  }
+
+  accountService.updateStatus(req.params.id, req.body.isActive)
+    .then(account => res.json(account))
+    .catch(next);
 }
 
 // helper functions
