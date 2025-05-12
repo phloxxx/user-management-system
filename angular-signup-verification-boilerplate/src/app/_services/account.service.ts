@@ -10,6 +10,7 @@ import { Account } from '@app/_models';
 const baseUrl = `${environment.apiUrl}/accounts`;
 @Injectable({ providedIn: 'root' })
 export class AccountService {
+    [x: string]: any;
     private accountSubject: BehaviorSubject<Account>;
     public account: Observable<Account>;
 
@@ -26,11 +27,17 @@ export class AccountService {
     }
 
     login(email: string, password: string) {
-        return this.http.post<any>(`${baseUrl}/authenticate`, { email, password }, { withCredentials: true })
-            .pipe(map(account => {
-                this.accountSubject.next(account);
+        return this.http.post<any>(`${environment.apiUrl}/accounts/authenticate`, { email, password })
+            .pipe(map(response => {
+                // Check if non-admin account is active before allowing login
+                if (response.role !== 'Admin' && !response.isActive) {
+                    throw new Error('Your account has been deactivated. Please contact an administrator.');
+                }
+                
+                // Authentication successful
+                this.accountSubject.next(response);
                 this.startRefreshTokenTimer();
-                return account;
+                return response;
             }));
     }
 
@@ -101,6 +108,19 @@ export class AccountService {
                 // auto logout if the logged in account deleted their own record
                 if (id === this.accountValue.id)
                     this.logout();
+            }));
+    }
+
+    updateStatus(id: string, isActive: boolean) {
+        return this.http.put<any>(`${baseUrl}/${id}/status`, { isActive })
+            .pipe(map(account => {
+                // If we're updating the current user, update the subject
+                if (account.id === this.accountValue.id) {
+                    // publish updated account to subscribers
+                    account = { ...this.accountValue, ...account };
+                    this.accountSubject.next(account);
+                }
+                return account;
             }));
     }
 
