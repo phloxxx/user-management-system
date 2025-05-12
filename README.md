@@ -16,6 +16,8 @@ git clone https://github.com/phloxxx/user-management-system.git
 
 ```
 npm install
+npm run install:backend
+npm run install:frontend
 ```
 
 ### 3. Start the backend server:
