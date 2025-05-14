@@ -3,8 +3,8 @@ import { first } from 'rxjs/operators';
 import { forkJoin } from 'rxjs'; // Import forkJoin from rxjs, not from operators
 import { Router } from '@angular/router';
 
-import { AccountService } from '@app/_services';
-import { EmployeeService } from '@app/_services/employee.service';
+import { AccountService, EmployeeService, RequestService, AlertService } from '@app/_services';
+import { Request } from '@app/_models';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@environments/environment';
 
@@ -15,6 +15,7 @@ export class ListComponent implements OnInit {
   requests: any[] = [];
   employees: any[] = [];
   accounts: any[] = [];
+  users: any[] = [];
   loading = false;
 
   constructor(
@@ -35,6 +36,8 @@ export class ListComponent implements OnInit {
       next: ([employees, accounts]) => {
         this.employees = employees;
         this.accounts = accounts;
+        console.log('Loaded employees:', employees);
+        console.log('Loaded accounts:', accounts);
         this.loadRequests();
       },
       error: error => {
@@ -42,6 +45,8 @@ export class ListComponent implements OnInit {
         this.loadRequests(); // Still try to load requests
       }
     });
+
+    // Remove redundant users loading since we already have accounts data
   }
 
   loadRequests() {
@@ -80,6 +85,42 @@ export class ListComponent implements OnInit {
     }
     
     return `Employee ID: ${employeeId}`;
+  }
+
+  // Add new methods to get user email and role
+  getUserEmail(employeeId: number): string {
+    if (!employeeId) return 'Unknown';
+    
+    // First find employee with matching ID
+    const employee = this.employees.find(e => e.id === employeeId);
+    if (!employee) {
+      console.log(`No employee found with ID: ${employeeId}`);
+      return 'Unknown';
+    }
+    
+    console.log(`Found employee:`, employee);
+    
+    // Then find the account connected to this employee
+    const account = this.accounts.find(a => a.id === employee.userId);
+    if (!account) {
+      console.log(`No account found for employee user ID: ${employee.userId}`);
+      return 'Unknown';
+    }
+    
+    console.log(`Found account:`, account);
+    return account.email;
+  }
+  
+  getUserRole(employeeId: number): string {
+    if (!employeeId) return 'Unknown';
+    
+    // First find employee with matching ID
+    const employee = this.employees.find(e => e.id === employeeId);
+    if (!employee) return 'Unknown';
+    
+    // Then find the account connected to this employee
+    const account = this.accounts.find(a => a.id === employee.userId);
+    return account ? account.role : 'Unknown';
   }
 
   account() {

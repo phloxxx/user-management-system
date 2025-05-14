@@ -2,19 +2,22 @@ import { Employee } from './employee';
 
 export interface RequestItem {
     id?: number;
-    requestId?: number;
     name: string;
     quantity: number;
-    details?: string;
+    description?: string;
 }
 
 export interface Request {
     id?: number;
     employeeId: number;
     type: string;
-    status: 'Pending' | 'Approved' | 'Rejected';
-    requestItems?: RequestItem[];
+    requestItems: RequestItem[];
+    status: string;
+    createdDate?: string;
+    description?: string;
+    employee?: Employee;
     
-    // Optional navigation properties
-    Employee?: Employee;
+    // Add runtime properties used by the UI
+    refreshing?: boolean;
+    updating?: boolean;
 }

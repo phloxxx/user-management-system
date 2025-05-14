@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { first } from 'rxjs/operators';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Location } from '@angular/common';
 
 import { EmployeeService } from '@app/_services/employee.service';
 import { DepartmentService } from '@app/_services/department.service';
@@ -9,7 +12,8 @@ import { Role } from '@app/_models';
 
 @Component({
   selector: 'app-add-edit',
-  templateUrl: './add-edit.component.html'
+  templateUrl: './add-edit.component.html',
+  standalone: false // Change this to false
 })
 export class AddEditComponent implements OnInit {
   id: string;
@@ -22,11 +26,13 @@ export class AddEditComponent implements OnInit {
     hireDate: '',
     status: 'Active'
   };
-  errorMessage: string;
+  errorMessage: string = '';
+  successMessage: string = '';
   users: any[] = [];
   departments: any[] = [];
   allEmployees: any[] = [];
   availableUsers: any[] = []; // Filtered list of available users
+  submitted = false;
   
   constructor(
     private router: Router,
@@ -34,7 +40,8 @@ export class AddEditComponent implements OnInit {
     private employeeService: EmployeeService,
     private departmentService: DepartmentService,
     private accountService: AccountService,
-    private alertService: AlertService
+    private alertService: AlertService,
+    private location: Location // Add Location service
   ) {}
 
   ngOnInit() {
@@ -85,41 +92,55 @@ export class AddEditComponent implements OnInit {
   }
   
   save() {
-    this.alertService.clear();
-    if (this.isEditMode) {
-      // Update existing employee
-      this.employeeService.update(this.id, this.employee)
-        .pipe(first())
-        .subscribe({
-          next: () => {
-            this.alertService.success('Employee updated successfully', { keepAfterRouteChange: true });
-            this.router.navigate(['../'], { relativeTo: this.route });
-          },
-          error: error => {
-            this.alertService.error(error);
-            this.errorMessage = 'Could not update employee';
-          }
-        });
-    } else {
-      // Create new employee
-      this.employeeService.create(this.employee)
-        .pipe(first())
-        .subscribe({
-          next: () => {
-            this.alertService.success('Employee created successfully', { keepAfterRouteChange: true });
-            this.router.navigate(['../'], { relativeTo: this.route });
-          },
-          error: error => {
-            this.alertService.error(error);
-            this.errorMessage = 'Could not create employee';
-          }
-        });
+    this.submitted = true;
+    this.clearMessages();
+    
+    // Return if form is invalid
+    if (this.isFormInvalid()) {
+        this.errorMessage = 'Please complete all required fields before saving.';
+        return;
+    }
+    
+    try {
+        if (this.id) {
+            // Update employee
+            this.employeeService.update(this.id, this.employee)
+              .pipe(first())
+              .subscribe({
+                next: () => {
+                  this.successMessage = 'Employee updated successfully';
+                  setTimeout(() => this.router.navigate(['../'], { relativeTo: this.route }), 1500);
+                },
+                error: error => {
+                  this.errorMessage = error;
+                }
+              });
+        } else {
+            // Create new employee
+            this.employeeService.create(this.employee)
+                .pipe(first())
+                .subscribe({
+                    next: (response) => {
+                        this.successMessage = 'Employee added successfully. An onboarding workflow has been created.';
+                        setTimeout(() => this.router.navigate(['../'], { relativeTo: this.route }), 1500);
+                    },
+                    error: error => {
+                        this.errorMessage = error;
+                    }
+                });
+        }
+    } catch (err) {
+        this.errorMessage = 'An unexpected error occurred. Please try again.';
+        console.error(err);
     }
   }
   
   cancel() {
-    // Navigate back to the employee list page
-    this.router.navigate(['/admin/employees']);
+    this.submitted = false;
+    this.clearMessages();
+    
+    // Use location.back() for true backtracking functionality
+    this.location.back();
   }
 
   // Check if the current user is an admin
@@ -197,5 +218,28 @@ export class AddEditComponent implements OnInit {
         this.availableUsers.push(currentUser);
       }
     }
+  }
+  
+  // Add this method to check if the form is invalid
+  isFormInvalid(): boolean {
+    return !this.employee.employeeId || 
+           !this.employee.userId || 
+           !this.employee.position || 
+           !this.employee.departmentId || 
+           !this.employee.hireDate || 
+           !this.employee.status;
+  }
+
+  clearError() {
+    this.errorMessage = '';
+  }
+  
+  clearSuccess() {
+    this.successMessage = '';
+  }
+  
+  clearMessages() {
+    this.errorMessage = '';
+    this.successMessage = '';
   }
 }

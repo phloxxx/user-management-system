@@ -17,6 +17,7 @@ import { EmployeeService } from '@app/_services/employee.service';
         EmployeesRoutingModule
     ],
     declarations: [
+        // AddEditComponent should be here if it's not standalone
         AddEditComponent,
         ListComponent,
         TransferComponent

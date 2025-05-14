@@ -41,13 +41,39 @@ export class TransferComponent implements OnInit {
         this.employee = employee;
         this.departments = departments;
         
-        // Set the current department name
+        // Set the current department name with better error handling
         if (employee && employee.departmentId) {
-          const currentDept = departments.find(d => d.id === employee.departmentId);
-          this.currentDepartmentName = currentDept ? currentDept.name : 'Unknown';
+          const currentDept = departments.find(d => Number(d.id) === Number(employee.departmentId));
+          
+          if (currentDept) {
+            this.currentDepartmentName = currentDept.name;
+            console.log(`Current department set to: ${this.currentDepartmentName} (ID: ${employee.departmentId})`);
+          } else {
+            console.error(`Department with ID ${employee.departmentId} not found in the departments list:`, departments);
+            this.currentDepartmentName = `Unknown (ID: ${employee.departmentId})`;
+            
+            // Attempt to fetch the specific department directly as a fallback
+            this.departmentService.getById(employee.departmentId.toString())
+              .pipe(first())
+              .subscribe({
+                next: (department) => {
+                  if (department) {
+                    this.currentDepartmentName = department.name;
+                    console.log(`Retrieved department name: ${department.name}`);
+                  }
+                },
+                error: (error) => console.error('Error fetching department:', error)
+              });
+          }
           
           // Initialize newDepartmentId with a different department to prevent same-department transfer
           this.newDepartmentId = this.findDifferentDepartment(employee.departmentId);
+          
+          // Log for debugging
+          console.log(`Current department ID: ${employee.departmentId}, Selected new department ID: ${this.newDepartmentId}`);
+        } else {
+          console.warn('Employee has no department ID assigned');
+          this.currentDepartmentName = 'No Department Assigned';
         }
       },
       error: (error) => {
@@ -61,12 +87,12 @@ export class TransferComponent implements OnInit {
   private findDifferentDepartment(currentDeptId: number): number {
     if (this.departments.length > 0) {
       // First try to find a different department than current
-      const differentDept = this.departments.find(d => d.id !== currentDeptId);
+      const differentDept = this.departments.find(d => Number(d.id) !== Number(currentDeptId));
       if (differentDept) {
         return differentDept.id;
       }
-      // If not found (unlikely), return the first one
-      return this.departments[0].id;
+      // If not found (unlikely), return null
+      return null;
     }
     return null;
   }
@@ -79,14 +105,21 @@ export class TransferComponent implements OnInit {
       return;
     }
     
-    if (this.newDepartmentId === this.employee.departmentId) {
-      this.errorMessage = 'Please select a different department';
+    // Convert to numbers for accurate comparison
+    const currentDeptId = Number(this.employee.departmentId);
+    const newDeptId = Number(this.newDepartmentId);
+    
+    if (currentDeptId === newDeptId) {
+      this.errorMessage = 'Cannot transfer to the same department. Please select a different department.';
       return;
     }
     
     // Get department names for the workflow details
     const fromDept = this.currentDepartmentName;
-    const toDept = this.departments.find(d => d.id === this.newDepartmentId)?.name || 'New Department';
+    const toDept = this.departments.find(d => Number(d.id) === newDeptId)?.name || 'New Department';
+    
+    // Clear any previous error message
+    this.errorMessage = '';
     
     // First update the employee
     this.employeeService.update(this.id, { 
@@ -95,7 +128,7 @@ export class TransferComponent implements OnInit {
     })
     .pipe(first())
     .subscribe({
-      next: () => {
+      next: (updatedEmployee) => {
         console.log("Employee department updated successfully");
         
         // Now create a workflow for this transfer

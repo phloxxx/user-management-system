@@ -17,6 +17,8 @@ export class AddEditComponent implements OnInit {
   errorMessage: string;
   submitting = false;
   loading = false;
+  submitted = false;
+  successMessage: string = '';
   
   constructor(
     private departmentService: DepartmentService,
@@ -52,54 +54,69 @@ export class AddEditComponent implements OnInit {
     }
   }
 
+  isFormInvalid(): boolean {
+    return !this.department.name || this.department.name.trim() === '' || 
+           !this.department.description || this.department.description.trim() === '';
+  }
+
   save() {
-    // Clear previous errors
-    this.alertService.clear();
-    this.errorMessage = undefined;
+    this.submitted = true;
+    this.clearMessages();
     
-    // Validate form
-    if (!this.department.name) {
-      this.errorMessage = 'Department name is required';
+    // Return if form is invalid
+    if (this.isFormInvalid()) {
+      this.errorMessage = 'Please complete all required fields before saving.';
       return;
     }
     
-    // Show submitting state
-    this.submitting = true;
+    try {
+      if (this.id) {
+        this.departmentService.update(this.id, this.department)
+          .pipe(first())
+          .subscribe({
+            next: () => {
+              this.successMessage = 'Department updated successfully';
+              setTimeout(() => this.router.navigate(['../'], { relativeTo: this.route }), 1500);
+            },
+            error: error => {
+              this.errorMessage = error;
+            }
+          });
+      } else {
+        this.departmentService.create(this.department)
+          .pipe(first())
+          .subscribe({
+            next: () => {
+              this.successMessage = 'Department added successfully';
+              setTimeout(() => this.router.navigate(['../'], { relativeTo: this.route }), 1500);
+            },
+            error: error => {
+              this.errorMessage = error;
+            }
+          });
+      }
+    } catch (err) {
+      this.errorMessage = 'An unexpected error occurred. Please try again.';
+      console.error(err);
+    }
+  }
 
-    // Log auth status before making the request
-    console.log('Saving department - Operation:', this.id ? 'Update' : 'Create', 'Department:', this.department);
-    
-    // Create or update based on whether we have an id
-    const saveObservable = this.id ?
-      this.departmentService.update(this.id, this.department) :
-      this.departmentService.create(this.department);
+  clearError() {
+    this.errorMessage = '';
+  }
 
-    saveObservable
-      .pipe(first())
-      .subscribe({
-        next: (result) => {
-          console.log('Department saved successfully:', result);
-          this.alertService.success('Department saved successfully', { keepAfterRouteChange: true });
-          this.router.navigate(['../'], { relativeTo: this.route });
-        },
-        error: (error) => {
-          this.submitting = false;
-          this.errorMessage = 'Error saving department: ' + error;
-          this.alertService.error(this.errorMessage);
-          console.error('Error saving department:', error);
-          
-          // Additional error diagnostics
-          if (error === 'Unauthorized') {
-            console.error('Authentication issue detected. This could be due to:');
-            console.error('1. Missing or expired authentication token');
-            console.error('2. Insufficient permissions (Admin role required)');
-            console.error('3. Issue with token validation in the backend');
-          }
-        }
-      });
+  clearSuccess() {
+    this.successMessage = '';
+  }
+
+  clearMessages() {
+    this.errorMessage = '';
+    this.successMessage = '';
   }
 
   cancel() {
+    this.submitted = false;
+    this.clearMessages();
     // Navigate back to departments list
     this.router.navigate(['../'], { relativeTo: this.route });
   }

@@ -263,7 +263,35 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         function createEmployee() {
             return authorize(Role.Admin, () => {
                 const employee = { id: self.employees.length + 1, ...body };
+                
+                // Make sure the employee has a userId (account) and departmentId
+                if (!employee.userId) {
+                    console.warn('Employee created without userId! Setting to default value');
+                    employee.userId = 1; // Default to admin
+                }
+                
+                if (!employee.departmentId) {
+                    console.warn('Employee created without departmentId! Setting to default value');
+                    employee.departmentId = 1; // Default to first department
+                }
+                
+                console.log('Creating employee:', employee);
                 self.employees.push(employee);
+                
+                // Automatically create an onboarding workflow for the new employee
+                const onboardingWorkflow = {
+                    id: self.workflows.length + 1,
+                    employeeId: employee.id,
+                    type: 'Onboarding',
+                    details: { task: 'Complete HR Forms (Step 1)' },
+                    status: 'Pending',
+                    createdDate: new Date().toISOString(),
+                    updatedDate: new Date().toISOString()
+                };
+                self.workflows.push(onboardingWorkflow);
+                
+                console.log(`Created onboarding workflow for new employee:`, onboardingWorkflow);
+                
                 return ok(employee);
             });
         }
@@ -451,17 +479,66 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function getRequests() {
-            return authorize(Role.Admin, () => ok(self.requests));
+            // Allow both admin and regular users to see requests
+            return authorize(null, () => {
+                const user = getUser();
+                
+                // If admin, return all requests
+                if (user.role === Role.Admin) {
+                    return ok(self.requests);
+                }
+                
+                // If regular user, return only their requests
+                const userRequests = self.requests.filter(r => r.employeeId === user.employeeId);
+                console.log(`Filtered requests for user ${user.email}:`, userRequests);
+                return ok(userRequests);
+            });
         }
         
         function createRequest() {
             return authorize(null, () => {
                 const user = getUser();
+                
+                // Get the actual employee record for this user
+                let employeeId = user.employeeId;
+                
+                // If no employee record exists for this user, create one
+                if (!self.employees.find(e => e.id === employeeId)) {
+                    const newEmployee = {
+                        id: self.employees.length + 1,
+                        employeeId: `EMP${(self.employees.length + 1).toString().padStart(3, '0')}`,
+                        userId: user.id,
+                        position: 'Staff',
+                        departmentId: 1,
+                        hireDate: new Date().toISOString().split('T')[0],
+                        status: 'Active'
+                    };
+                    
+                    self.employees.push(newEmployee);
+                    employeeId = newEmployee.id;
+                    
+                    console.log(`Created new employee record for user ${user.email}:`, newEmployee);
+                }
+                
                 const request = { 
                     id: self.requests.length + 1, 
-                    employeeId: user.employeeId,
+                    employeeId: employeeId, // Use the actual employee ID
+                    status: body.status || 'Pending',
+                    createdDate: new Date().toISOString(),
                     ...body 
                 };
+                
+                // Ensure requestItems is an array
+                if (!request.requestItems) {
+                    request.requestItems = [];
+                }
+                
+                console.log('Request created:', request);
+                console.log('Employee ID used:', employeeId);
+                console.log('Available employees:', self.employees);
+                console.log('Available users:', self.users);
+                console.log('Available accounts:', accounts);
+                
                 self.requests.push(request);
                 return ok(request);
             });

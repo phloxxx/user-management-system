@@ -1,7 +1,18 @@
 <div class="card">
     <div class="card-header">Employees</div>
     <div class="card-body">
-        <div class="table-responsive">
+        <!-- Show loading spinner -->
+        <div *ngIf="loading" class="text-center my-3">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+        
+        <!-- Show empty state if no employees -->
+        <div *ngIf="!loading && employees?.length === 0" class="alert alert-info text-center">
+            No employees found. Please add an employee to get started.
+        </div>
+        
+        <!-- Show table only when not loading and has data -->
+        <div *ngIf="!loading && employees?.length > 0" class="table-responsive">
             <table class="table table-striped">
                 <thead>
                     <tr>
@@ -40,6 +51,7 @@
                 </tbody>
             </table>
         </div>
+        
         <div class="d-flex justify-content-end mt-3">
             <button *ngIf="account()?.role === 'Admin'" class="btn btn-primary" (click)="add()">Add Employee</button>
         </div>

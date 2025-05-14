@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { first } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 
-import { AccountService } from '@app/_services';
+import { AccountService, AlertService } from '@app/_services';
 import { EmployeeService } from '@app/_services/employee.service';
+import { DepartmentService } from '@app/_services/department.service';
 import { environment } from '@environments/environment';
 
 @Component({
@@ -13,36 +15,62 @@ import { environment } from '@environments/environment';
 })
 export class ListComponent implements OnInit {
     employees: any[] = [];
-    users: any[] = []; // Add array to store users
-    departments: any[] = []; // Add array to store departments
+    users: any[] = [];
+    departments: any[] = [];
+    loading: boolean = false;
     
     constructor(
         private employeeService: EmployeeService,
         private accountService: AccountService,
+        private departmentService: DepartmentService,
+        private alertService: AlertService,
         private router: Router,
         private http: HttpClient
     ) {}
 
     ngOnInit() {
-        console.log('Employee List Component initialized');
-        console.log('Current user:', this.accountService.accountValue);
-        this.fetchEmployees();
-        this.loadUsers();
-        this.loadDepartments();
+        this.loading = true;
+        this.loadAllData();
+    }
+    
+    // Load all necessary data from the API
+    loadAllData() {
+        // Use forkJoin to load all data in parallel
+        forkJoin({
+            employees: this.employeeService.getAll(),
+            users: this.accountService.getAll(),
+            departments: this.departmentService.getAll()
+        })
+        .pipe(first())
+        .subscribe({
+            next: (data) => {
+                this.employees = data.employees;
+                this.users = data.users;
+                this.departments = data.departments;
+                this.loading = false;
+                console.log('All data loaded successfully');
+            },
+            error: (error) => {
+                console.error('Error loading data:', error);
+                this.alertService.error('Failed to load data. Please try again.');
+                this.loading = false;
+            }
+        });
     }
 
     fetchEmployees() {
-        console.log('Fetching employees data...');
+        this.loading = true;
         this.employeeService.getAll()
             .pipe(first())
             .subscribe({
                 next: (employees) => {
-                    console.log('Employees data fetched successfully', employees.length);
                     this.employees = employees;
+                    this.loading = false;
                 },
                 error: (error) => {
                     console.error('Error fetching employees:', error);
-                    // Don't logout here, let the interceptor handle authentication errors
+                    this.alertService.error('Failed to load employees');
+                    this.loading = false;
                 }
             });
     }
@@ -69,11 +97,12 @@ export class ListComponent implements OnInit {
                 .pipe(first())
                 .subscribe({
                     next: () => {
-                        // Refresh the employees list after deletion
+                        this.alertService.success('Employee deleted');
                         this.fetchEmployees();
                     },
                     error: (error) => {
                         console.error('Error deleting employee:', error);
+                        this.alertService.error('Failed to delete employee');
                     }
                 });
         }
@@ -89,29 +118,33 @@ export class ListComponent implements OnInit {
         this.router.navigate(['/admin/employees', id, 'workflows']);
     }
 
-    // New method to load users for lookup
-    private loadUsers() {
-        this.http.get(`${environment.apiUrl}/accounts`)
-            .pipe(first())
-            .subscribe(users => this.users = users as any[]);
+    getUserEmail(userId: any): string {
+        if (!userId) {
+            return 'No User Assigned';
+        }
+        
+        const userIdStr = userId.toString();
+        const user = this.users.find(x => x.id.toString() === userIdStr);
+        
+        if (user) {
+            return user.email;
+        } else {
+            return `Unknown User`;
+        }
     }
-    
-    // New method to load departments for lookup
-    private loadDepartments() {
-        this.http.get(`${environment.apiUrl}/departments`)
-            .pipe(first())
-            .subscribe(departments => this.departments = departments as any[]);
-    }
-    
-    // New method to get user email by user ID
-    getUserEmail(userId: number): string {
-        const user = this.users.find(u => u.id === userId);
-        return user ? user.email : 'Unknown';
-    }
-    
-    // New method to get department name by department ID
-    getDepartmentName(departmentId: number): string {
-        const department = this.departments.find(d => d.id === departmentId);
-        return department ? department.name : 'Unknown';
+
+    getDepartmentName(departmentId: any): string {
+        if (!departmentId) {
+            return 'No Department';
+        }
+        
+        const deptIdNum = Number(departmentId);
+        const department = this.departments.find(x => Number(x.id) === deptIdNum);
+        
+        if (department) {
+            return department.name;
+        } else {
+            return `Unknown Department`;
+        }
     }
 }

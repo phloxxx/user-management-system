@@ -3,50 +3,86 @@
         <h4 class="mb-0">{{ id ? 'EDIT' : 'ADD' }} REQUEST</h4>
     </div>
     <div class="card-body">
-        <div class="alert alert-danger" *ngIf="errorMessage">{{errorMessage}}</div>
-        
-        <div class="mb-3">
-            <label class="form-label">Type</label>
-            <select class="form-select" [(ngModel)]="request.type">
-                <option>Equipment</option>
-                <option>Leave</option>
-                <option>Resources</option>
-            </select>
+        <!-- Show only a spinner with no text -->
+        <div *ngIf="loading" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status"></div>
         </div>
         
-        <div class="mb-3">
-            <label class="form-label">Employee</label>
-            <select class="form-select" [(ngModel)]="request.employeeId">
-                <option *ngFor="let employee of employees" [value]="employee.id">{{employee.employeeId}}</option>
-            </select>
+        <!-- Show error message if loading failed -->
+        <div *ngIf="errorMessage && errorMessage !== 'Loading took too long. Some data may not be complete.'" class="alert alert-danger">
+            {{errorMessage}}
+            <button *ngIf="id" type="button" class="float-end btn btn-sm btn-outline-danger" (click)="cancel()">
+                Go Back
+            </button>
         </div>
         
-        <div class="mb-4">
-            <label class="form-label">Items</label>
+        <!-- Show form immediately even when partly loading -->
+        <div *ngIf="!loading">
+            <div class="mb-3">
+                <label class="form-label">Type <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="request.type">
+                    <option value="">-- Select Type --</option>
+                    <option>Equipment</option>
+                    <option>Leave</option>
+                    <option>Resources</option>
+                </select>
+                <div *ngIf="id && !request.id" class="form-text text-info">
+                    <span class="spinner-border spinner-border-sm"></span> Loading request data...
+                </div>
+            </div>
             
-            <div *ngFor="let item of request.requestItems; let i = index" class="mb-3">
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label d-block">Name</label>
-                        <input type="text" class="form-control w-100" [(ngModel)]="item.name">
+            <div class="mb-3">
+                <label class="form-label">Employee <span class="text-danger">*</span></label>
+                <select class="form-select" [(ngModel)]="request.employeeId">
+                    <option [ngValue]="null">-- Select Employee --</option>
+                    <!-- Add debugging output to help troubleshoot -->
+                    <option *ngFor="let employee of employees" [ngValue]="employee.id">
+                        {{employee.employeeId}}
+                    </option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="form-label">Items <span class="text-danger">*</span></label>
+                
+                <!-- Container for request items with styling -->
+                <div class="request-items-container border rounded p-3 bg-light">
+                    <div *ngIf="request.requestItems.length === 0" class="text-center text-muted py-3">
+                        No items added yet. Click "Add Item" below to add items to your request.
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label d-block">Quantity</label>
-                        <input type="number" class="form-control w-100" [(ngModel)]="item.quantity" min="1">
+                    
+                    <div *ngFor="let item of request.requestItems; let i = index" class="mb-3 item-row">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label d-block">Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control w-100" [(ngModel)]="item.name" 
+                                       placeholder="Enter item name">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label d-block">Quantity <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control w-100" [(ngModel)]="item.quantity" 
+                                       min="1" placeholder="Enter quantity">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-danger w-100" (click)="removeItem(i)">Remove</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-danger" (click)="removeItem(i)">Remove</button>
+                    
+                    <!-- Move Add Item button from center to left -->
+                    <div class="mt-3 text-start">
+                        <button class="btn btn-secondary" (click)="addItem()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Item
+                        </button>
                     </div>
                 </div>
             </div>
             
-            <button class="btn btn-secondary mt-2" (click)="addItem()">Add Item</button>
-        </div>
-        
-        <div class="d-flex justify-content-center mt-4">
-            <button class="btn btn-primary" (click)="save()">Save</button>
-            <span style="display: inline-block; width: 10px;"></span>
-            <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
+            <div class="d-flex justify-content-center mt-4">
+                <button class="btn btn-primary" (click)="save()">Save</button>
+                <span style="display: inline-block; width: 10px;"></span>
+                <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
+            </div>
         </div>
     </div>
 </div>
@@ -79,5 +115,42 @@
     
     .btn {
         padding: 0.375rem 1rem;
+    }
+    
+    .request-items-container {
+        transition: all 0.3s ease;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .item-row {
+        padding: 10px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .bg-light {
+        background-color: #f8f9fa;
+    }
+    
+    .border {
+        border: 1px solid #dee2e6 !important;
+    }
+    
+    .rounded {
+        border-radius: 0.25rem !important;
+    }
+    
+    .p-3 {
+        padding: 1rem !important;
+    }
+    
+    /* Make the form look more professional */
+    .form-control:focus, .form-select:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
     }
 </style>

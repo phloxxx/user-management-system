@@ -3,6 +3,11 @@
     <div class="card-body">
         <div class="alert alert-danger" *ngIf="errorMessage">{{errorMessage}}</div>
         
+        <!-- Show a warning if the user selects the same department -->
+        <div class="alert alert-warning" *ngIf="newDepartmentId === employee?.departmentId && newDepartmentId !== null">
+            You must select a different department than the current one.
+        </div>
+        
         <div class="mb-3">
             <label class="form-label">Employee</label>
             <input type="text" class="form-control" [value]="employee?.employeeId" disabled>
@@ -16,13 +21,17 @@
         <div class="mb-3">
             <label class="form-label d-block">New Department</label>
             <select class="form-select w-100" [(ngModel)]="newDepartmentId">
-                <option *ngFor="let dept of departments" [value]="dept.id">{{dept.name}}</option>
+                <option *ngFor="let dept of departments" [value]="dept.id" 
+                        [disabled]="dept.id === employee?.departmentId">
+                    {{dept.name}} {{dept.id === employee?.departmentId ? '(Current)' : ''}}
+                </option>
             </select>
         </div>
         
         <div class="text-center mt-4">
-            <button class="btn btn-primary" (click)="transfer()">Transfer</button>
-            <span style="display: inline-block; width: 20px;"></span>
+            <button class="btn btn-primary" (click)="transfer()" 
+                   [disabled]="newDepartmentId === employee?.departmentId || !newDepartmentId">Transfer</button>
+            <span style="display: inline-block; width: 10px;"></span>
             <button class="btn btn-secondary" routerLink="/admin/employees">Cancel</button>
         </div>
     </div>
