@@ -4,7 +4,7 @@ const app = express();
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const errorHandler = require('../_middleware/error-handler');
+const errorHandler = require('./_middleware/error-handler');
 
 
 app.use(cors({
@@ -20,7 +20,7 @@ app.use(cookieParser());
 app.use('/accounts', require('./accounts/account.controller'));
 
 // swagger docs route
-app.use('/api-docs', require('_helpers/swagger'));
+app.use('/api-docs', require('./_helpers/swagger'));
 
 // global error handler
 app.use(errorHandler);
