@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: user-management-system
-    env: node
-    buildCommand: npm install
-    startCommand: node node-mysql-boilerplate-api/server.js
-    envVars:
-      - key: NODE_ENV
-        value: production

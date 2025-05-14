@@ -51,15 +51,11 @@
                                             #{{workflow.details.requestId}}
                                         </a>
                                     </div>
-                                    <div *ngIf="workflow.type" class="mb-1">
-                                        <span class="fw-bold">Request Type:</span> {{workflow.type.replace(' Request', '')}}
-                                    </div>
                                     <div *ngIf="workflow.details?.items" class="mb-1">
                                         <span class="fw-bold">Items:</span>
                                         <ul class="mb-0 ps-3">
-                                            <!-- Assuming items is a string with format "Item1 (x2), Item2 (x1)" -->
-                                            <li *ngFor="let item of splitItemsList(workflow.details.items)">
-                                                {{item}}
+                                            <li *ngFor="let item of workflow.details.items">
+                                                {{item.name}} <span *ngIf="item.quantity">(x{{item.quantity}})</span>
                                             </li>
                                         </ul>
                                     </div>
