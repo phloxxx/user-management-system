@@ -48,6 +48,12 @@ function authenticate(req, res, next) {
 function refreshToken(req, res, next) {
   const token = req.cookies.refreshToken;
   const ipAddress = req.ip;
+  
+  // Add validation for missing token
+  if (!token) {
+      return res.status(400).json({ message: 'Refresh token is required' });
+  }
+  
   accountService.refreshToken({ token, ipAddress })
     .then(({ refreshToken, ...account }) => {
       setTokenCookie(res, refreshToken);

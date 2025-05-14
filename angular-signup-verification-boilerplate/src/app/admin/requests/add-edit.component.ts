@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { first } from 'rxjs/operators';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { Location } from '@angular/common';
 
 import { RequestService, EmployeeService, AlertService, AccountService, WorkflowService } from '@app/_services';
@@ -23,148 +23,126 @@ export class AddEditComponent implements OnInit {
     loading = false;
     submitting = false;
     errorMessage = '';
+    currentUser = null;
+    initialRequestItems = [];
 
     constructor(
         private requestService: RequestService,
         private employeeService: EmployeeService,
         private accountService: AccountService,
         private alertService: AlertService,
-        private workflowService: WorkflowService, // Add workflow service
+        private workflowService: WorkflowService,
         private route: ActivatedRoute,
         private router: Router,
         private location: Location
-    ) {}
+    ) {
+        this.currentUser = this.accountService.accountValue;
+    }
 
     ngOnInit() {
         this.id = this.route.snapshot.params['id'];
         
-        // Show UI immediately - no loading spinner needed
-        this.loading = false;
+        // Check for employeeId in query params for new requests
+        if (!this.id) {
+            this.route.queryParams.subscribe(params => {
+                if (params.employeeId) {
+                    this.request.employeeId = Number(params.employeeId);
+                    console.log(`Pre-filling request for employee ID: ${this.request.employeeId}`);
+                }
+            });
+        }
         
-        // In edit mode, pre-fill with instant mock data
-        if (this.id) {
-            // Generate instant mock data to show immediately
-            this.createInstantMockRequest();
-        } else {
-            // Add mode - initialize with at least one blank item
+        this.loading = true;
+        
+        // Load reference data first
+        forkJoin({
+            employees: this.employeeService.getAll(),
+            accounts: this.accountService.getAll()
+        }).pipe(first()).subscribe({
+            next: (data) => {
+                this.employees = data.employees || [];
+                this.accounts = data.accounts || [];
+                console.log('Loaded reference data:', {
+                    employees: this.employees.length,
+                    accounts: this.accounts.length
+                });
+                
+                // If this is a new request and we haven't already set the employee from query params
+                if (!this.id && !this.request.employeeId && this.currentUser) {
+                    // Find the employee matching the current user
+                    const currentUserEmployee = this.employees.find(e => 
+                        e.userId === this.currentUser.id
+                    );
+                    
+                    if (currentUserEmployee) {
+                        this.request.employeeId = currentUserEmployee.id;
+                        console.log(`Auto-selected employee ID ${this.request.employeeId} for the current user`);
+                    }
+                }
+                
+                // After loading reference data, load the specific request if editing
+                if (this.id) {
+                    this.loadRequest();
+                } else {
+                    // For new requests, add at least one item row
+                    if (!this.request.requestItems || !this.request.requestItems.length) {
+                        this.addItem();
+                    }
+                    this.loading = false;
+                }
+            },
+            error: (error) => {
+                console.error('Error loading reference data:', error);
+                this.errorMessage = 'Failed to load reference data';
+                this.loading = false;
+            }
+        });
+
+        // Initialize with at least one item
+        if (!this.request.requestItems || this.request.requestItems.length === 0) {
             this.addItem();
         }
-        
-        // Now load the real data in the background without blocking UI
-        this.loadDataInBackground();
     }
-
-    // Create an immediate mock request based on ID to show something right away
-    createInstantMockRequest() {
-        // Check local storage first to see if we have edited this request before
-        const savedRequestJson = localStorage.getItem(`request-${this.id}`);
-        if (savedRequestJson) {
-            try {
-                const savedRequest = JSON.parse(savedRequestJson);
-                console.log('Using locally saved request data:', savedRequest);
-                this.request = savedRequest;
-                return;
-            } catch (e) {
-                console.error('Failed to parse saved request:', e);
-            }
-        }
-
-        // If we're editing ID 1, we know the correct data from the fake backend
-        if (this.id === '1') {
-            this.request = {
-                id: 1,
-                employeeId: 2, // Make sure this matches the exact employee ID in the employees array
-                type: 'Equipment',
-                status: 'Pending',
-                requestItems: [{ name: 'Laptop', quantity: 1 }]
-            };
-        } else {
-            // Use the generic logic for other IDs - with minimal defaults
-            // DON'T override actual employee and item data on edit
-            this.request = {
-                id: parseInt(this.id),
-                employeeId: null, // Will be filled in from API response
-                type: '',
-                status: 'Pending',
-                requestItems: [] // Will be filled in from API response
-            };
-        }
-    }
-
-    // Load all data in the background without blocking the UI
-    loadDataInBackground() {
-        // Load employees silently in background
-        this.employeeService.getAll()
+    
+    loadRequest() {
+        this.requestService.getById(this.id)
             .pipe(first())
-            .subscribe(employees => {
-                this.employees = employees;
-                console.log('Employees loaded:', employees);
-                
-                // Ensure the employee ID in the request matches one of the available employees
-                this.ensureValidEmployeeId();
-            });
-        
-        // Load accounts silently in background
-        this.accountService.getAll()
-            .pipe(first())
-            .subscribe(accounts => {
-                this.accounts = accounts;
-            });
-            
-        // In edit mode, get the actual request data
-        if (this.id) {
-            this.requestService.getById(this.id)
-                .pipe(first())
-                .subscribe(request => {
-                    // Only update properties that exist in the response
-                    // This prevents overwriting values with undefined
+            .subscribe({
+                next: (request) => {
                     if (request) {
-                        console.log('Got request data from API:', request);
+                        console.log('Loaded request data for editing:', request);
+                        this.request = request;
                         
-                        // Don't overwrite with undefined/null values
-                        Object.entries(request).forEach(([key, value]) => {
-                            if (value !== undefined && value !== null) {
-                                this.request[key] = value;
-                            }
-                        });
-                        
-                        // Make sure to keep original user input for items
-                        if (!this.request.requestItems || !this.request.requestItems.length) {
+                        // Fix for items not displaying - check for both RequestItems and requestItems
+                        if (request['RequestItems'] && Array.isArray(request['RequestItems']) && request['RequestItems'].length > 0) {
+                            console.log('Found items in RequestItems:', request['RequestItems']);
+                            this.request.requestItems = request['RequestItems'];
+                        } else if (!this.request.requestItems || this.request.requestItems.length === 0) {
+                            console.log('No items found in request, creating empty item');
+                            this.request.requestItems = [];
                             this.addItem();
+                        } else {
+                            console.log('Found items in requestItems:', this.request.requestItems);
                         }
+                        
+                        // Save a copy of the initial request items for comparison
+                        this.initialRequestItems = JSON.parse(JSON.stringify(this.request.requestItems || []));
                     }
-                });
-        }
-    }
-
-    // Add this method to ensure the employeeId is valid when in edit mode
-    ensureValidEmployeeId() {
-        if (this.id && this.request && this.request.employeeId && this.employees.length > 0) {
-            console.log('Checking if employee ID is valid:', this.request.employeeId);
-            
-            // Convert ID to number for comparison since API might return string or number
-            const currentEmployeeId = Number(this.request.employeeId);
-            
-            // Check if the employeeId exists in the employees array
-            const employeeExists = this.employees.some(emp => Number(emp.id) === currentEmployeeId);
-            
-            if (!employeeExists) {
-                console.warn(`Employee ID ${currentEmployeeId} not found in employees list. Using first available employee.`);
-                
-                // If the employee ID doesn't exist, use the first employee in the list
-                if (this.employees.length > 0) {
-                    this.request.employeeId = this.employees[0].id;
-                    console.log('Setting request.employeeId to:', this.request.employeeId);
+                    this.loading = false;
+                },
+                error: (error) => {
+                    console.error(`Error loading request ${this.id}:`, error);
+                    this.errorMessage = 'Failed to load request';
+                    this.loading = false;
                 }
-            } else {
-                console.log('Employee ID is valid:', currentEmployeeId);
-            }
-        }
+            });
     }
 
     // Add a new request item
     addItem() {
-        this.request.requestItems = this.request.requestItems || [];
+        if (!this.request.requestItems) {
+            this.request.requestItems = [];
+        }
         this.request.requestItems.push({
             name: '',
             quantity: 1
@@ -173,75 +151,90 @@ export class AddEditComponent implements OnInit {
 
     // Remove a request item by index
     removeItem(index: number) {
-        this.request.requestItems.splice(index, 1);
+        if (this.request.requestItems) {
+            this.request.requestItems.splice(index, 1);
+            
+            // Ensure there's always at least one item
+            if (this.request.requestItems.length === 0) {
+                this.addItem();
+            }
+        }
     }
 
-    // Override the save method to also create a workflow
+    // Save the request
     save() {
         this.submitting = true;
+        this.errorMessage = '';
         
         // Validate form
-        if (!this.request.type || !this.request.employeeId || !this.request.requestItems.length) {
-            this.errorMessage = 'Please fill in all required fields and add at least one item';
+        if (!this.request.type || !this.request.employeeId) {
+            this.errorMessage = 'Please fill in all required fields';
             this.submitting = false;
             return;
         }
         
+        // Make sure there's at least one item with a name
+        if (!this.request.requestItems || this.request.requestItems.length === 0) {
+            this.addItem();
+        }
+        
         // Make sure all items have names
-        for (const item of this.request.requestItems) {
-            if (!item.name || item.quantity < 1) {
-                this.errorMessage = 'Please ensure all items have a name and quantity';
-                this.submitting = false;
-                return;
-            }
+        const hasInvalidItems = this.request.requestItems.some(item => !item.name || !item.quantity || item.quantity < 1);
+        if (hasInvalidItems) {
+            this.errorMessage = 'Please ensure all items have a name and quantity';
+            this.submitting = false;
+            return;
         }
 
-        // Save to localStorage for persistence between page refreshes
-        if (this.id) {
-            localStorage.setItem(`request-${this.id}`, JSON.stringify(this.request));
-        }
+        console.log('About to save request with items:', this.request.requestItems);
+
+        // Create a clean version of the request to send to the API
+        const requestToSave = {
+            ...this.request,
+            // Make sure employeeId is a number
+            employeeId: typeof this.request.employeeId === 'string' 
+                ? parseInt(this.request.employeeId) 
+                : this.request.employeeId,
+            // Make sure items are properly formatted and non-empty
+            requestItems: this.request.requestItems
+                .filter(item => item.name && item.name.trim() !== '')
+                .map(item => ({
+                    id: item.id, // Keep the ID for existing items
+                    name: item.name,
+                    quantity: parseInt(item.quantity?.toString() || '1'),
+                    description: item.description || ''
+                }))
+        };
+
+        console.log('Cleaned request to save:', requestToSave);
 
         if (this.id) {
             // Update existing request
-            this.requestService.update(this.id, this.request)
+            this.requestService.update(this.id, requestToSave)
                 .pipe(first())
                 .subscribe({
                     next: (savedRequest) => {
-                        // Save the server response to localStorage
-                        localStorage.setItem(`request-${this.id}`, JSON.stringify(savedRequest));
-                        
-                        // Create or update the associated workflow
                         this.createOrUpdateWorkflow(savedRequest);
-                        
                         this.alertService.success('Request updated', { keepAfterRouteChange: true });
-                        // Navigate to requests list instead of home
-                        this.router.navigate(['/admin/requests']);
+                        setTimeout(() => this.router.navigate(['/admin/requests']), 500);
                     },
-                    error: error => {
-                        this.errorMessage = error;
+                    error: (error) => {
+                        this.errorMessage = typeof error === 'string' ? error : 'Failed to update request';
                         this.submitting = false;
                     }
                 });
         } else {
             // Create new request
-            this.requestService.create(this.request)
+            this.requestService.create(requestToSave)
                 .pipe(first())
                 .subscribe({
                     next: (newRequest) => {
-                        // Save the new request with its ID to localStorage
-                        if (newRequest && newRequest.id) {
-                            localStorage.setItem(`request-${newRequest.id}`, JSON.stringify(newRequest));
-                        }
-                        
-                        // Create an associated workflow
                         this.createOrUpdateWorkflow(newRequest);
-                        
                         this.alertService.success('Request created', { keepAfterRouteChange: true });
-                        // Navigate to requests list instead of home
-                        this.router.navigate(['/admin/requests']);
+                        setTimeout(() => this.router.navigate(['/admin/requests']), 500);
                     },
-                    error: error => {
-                        this.errorMessage = error;
+                    error: (error) => {
+                        this.errorMessage = typeof error === 'string' ? error : 'Failed to create request';
                         this.submitting = false;
                     }
                 });
@@ -251,57 +244,37 @@ export class AddEditComponent implements OnInit {
     // Helper method to create or update a workflow for the request
     private createOrUpdateWorkflow(request: Request) {
         // Skip workflow creation if request is invalid
-        if (!request || !request.id || !request.employeeId) {
+        if (!request || !request.id) {
             console.warn('Cannot create workflow for invalid request:', request);
             return;
         }
         
-        // Prepare workflow details based on request type
-        const workflowType = request.type;
-        const details: any = {};
-        
-        // Customize details based on request type
-        if (request.type === 'Equipment') {
-            details.itemCount = request.requestItems.length;
+        // Ensure we have a valid employeeId and convert it to a number
+        const employeeId = typeof request.employeeId === 'string' 
+            ? parseInt(request.employeeId, 10) 
+            : request.employeeId;
             
-            // Format items in a nice readable way
-            const itemsText = request.requestItems.map(item => {
-                if (item.quantity > 1) {
-                    return `${item.name} (${item.quantity})`;
-                } else {
-                    return item.name;
-                }
-            }).join(', ');
-            
-            details.items = itemsText;
-            
-            if (request.description) {
-                details.description = request.description;
-            }
-        } else if (request.type === 'Leave') {
-            details.reason = request.description || 'Leave request';
-            details.duration = request.requestItems.length > 0 ? request.requestItems[0].name : 'Not specified';
-        } else {
-            // For other request types - Use proper capitalization
-            details.description = `${request.type} request with ${request.requestItems.length} item(s)`;
-            
-            // Format items with proper capitalization 
-            details.items = request.requestItems.map(item => {
-                if (item.quantity > 1) {
-                    return `${item.name} (${item.quantity})`;
-                } else {
-                    return item.name;
-                }
-            }).join(', ');
+        if (!employeeId) {
+            console.warn('Cannot create workflow without employeeId:', request);
+            return;
         }
         
-        // Create workflow object
+        // Format item details with name and quantity clearly displayed
+        const itemsText = request.requestItems
+            ? request.requestItems.map(item => {
+                return `${item.name} (x${item.quantity})`;
+            }).join(', ')
+            : '';
+        
+        // Create workflow object with detailed information
         const workflow = {
-            employeeId: request.employeeId,
+            employeeId: employeeId,
             type: `${request.type} Request`,
-            details: details,
-            status: 'Pending' as 'Pending' | 'Approved' | 'Rejected',
-            relatedRequestId: request.id
+            details: {
+                items: itemsText,
+                requestId: request.id
+            },
+            status: 'Pending' as 'Pending' | 'Approved' | 'Rejected'
         };
         
         console.log('Creating workflow for request:', workflow);
@@ -316,23 +289,35 @@ export class AddEditComponent implements OnInit {
     }
 
     cancel() {
-        // Use location.back() for true backtracking functionality
-        this.location.back();
+        // When canceling, ensure we don't clear the request cache
+        // Navigate to requests list, but use our back function with skipLocationChange
+        // to avoid adding a new browser history entry
+        
+        // First, make sure any data is saved to cache before navigating
+        if (this.id) {
+            this.requestService.getById(this.id).pipe(first()).subscribe({
+                next: () => {
+                    console.log('Request data refreshed in cache before navigation');
+                    this.location.back();
+                },
+                error: () => this.location.back()
+            });
+        } else {
+            // Just go back for new requests
+            this.location.back();
+        }
     }
 
-    // Helper method to display employee email
-    getEmployeeEmail(employee: any): string {
-        if (!employee || !employee.userId) return 'Unknown';
+    // Helper method to get the employee name or email
+    getEmployeeDisplay(id: number): string {
+        if (id === null || id === undefined) return 'Select Employee';
+        
+        const employee = this.employees.find(e => e.id === id);
+        if (!employee) return `Unknown (ID: ${id})`;
         
         const account = this.accounts.find(a => a.id === employee.userId);
-        return account ? account.email : 'Unknown';
-    }
-
-    // Helper method to display employee role
-    getEmployeeRole(employee: any): string {
-        if (!employee || !employee.userId) return 'Unknown';
+        if (!account) return employee.employeeId;
         
-        const account = this.accounts.find(a => a.id === employee.userId);
-        return account ? account.role : 'Unknown';
+        return `${account.email} (${employee.employeeId})`;
     }
 }

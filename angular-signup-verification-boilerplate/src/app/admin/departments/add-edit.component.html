@@ -1,39 +1,41 @@
 <div class="card">
-    <div class="card-header">{{ id ? 'Edit' : 'Add'}} Department</div>
+    <h5 class="card-header">{{ isAddMode ? 'Add Department' : 'Edit Department' }}</h5>
     <div class="card-body">
-        <!-- Only keep the red error message -->
-        <div class="alert alert-danger" *ngIf="errorMessage">
-            <strong>Error:</strong> {{errorMessage}}
-            <button type="button" class="btn-close float-end" (click)="clearError()"></button>
+        <div *ngIf="loading" class="text-center">
+            <span class="spinner-border spinner-border-sm"></span> Loading...
         </div>
         
-        <!-- Success message -->
-        <div class="alert alert-success alert-dismissible fade show" *ngIf="successMessage">
-            {{successMessage}}
-            <button type="button" class="btn-close" (click)="clearSuccess()"></button>
+        <div *ngIf="error" class="alert alert-danger">
+            {{ error }}
+            <button type="button" class="btn-close float-end" (click)="error = ''"></button>
         </div>
         
-        <form>
+        <form *ngIf="!loading" [formGroup]="form" (ngSubmit)="onSubmit()">
             <div class="mb-3">
-                <label class="form-label">Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" [(ngModel)]="department.name" name="name" required
-                       [ngClass]="{'is-invalid': submitted && !department.name}">
-                <div class="invalid-feedback" *ngIf="submitted && !department.name">
-                    Department name is required
+                <label class="form-label">Name</label>
+                <input type="text" formControlName="name" class="form-control" 
+                       [ngClass]="{ 'is-invalid': submitted && f.name.errors }" />
+                <div *ngIf="submitted && f.name.errors" class="invalid-feedback">
+                    <div *ngIf="f.name.errors.required">Name is required</div>
                 </div>
             </div>
+            
             <div class="mb-3">
-                <label class="form-label">Description <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" [(ngModel)]="department.description" name="description" required
-                       [ngClass]="{'is-invalid': submitted && !department.description}">
-                <div class="invalid-feedback" *ngIf="submitted && !department.description">
-                    Department description is required
+                <label class="form-label">Description</label>
+                <input type="text" formControlName="description" class="form-control" 
+                       [ngClass]="{ 'is-invalid': submitted && f.description.errors }" />
+                <div *ngIf="submitted && f.description.errors" class="invalid-feedback">
+                    <div *ngIf="f.description.errors.required">Description is required</div>
                 </div>
             </div>
-            <div class="text-center">
-                <button class="btn btn-primary" (click)="save()" [disabled]="submitted && isFormInvalid()">Save</button>
+            
+            <div class="text-center mt-4">
+                <button type="submit" [disabled]="submitting" class="btn btn-primary">
+                    <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+                    Save
+                </button>
                 <span style="display: inline-block; width: 10px;"></span>
-                <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
+                <button type="button" [disabled]="submitting" class="btn btn-secondary" routerLink="/admin/departments">Cancel</button>
             </div>
         </form>
     </div>

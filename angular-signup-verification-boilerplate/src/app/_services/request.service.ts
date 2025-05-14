@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, throwError, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of } from 'rxjs'; // Make sure 'of' is imported here
 import { tap, catchError } from 'rxjs/operators';
 
 import { environment } from '@environments/environment';
@@ -13,8 +13,6 @@ export class RequestService {
     // Add cache for requests to improve loading speed
     private requestsCache: Request[] = [];
     private requestByIdCache: Map<string, Request> = new Map();
-    // Add a cache for storing user-created requests
-    private userCreatedRequests: Map<string, Request> = new Map();
 
     constructor(private http: HttpClient) { }
 
@@ -22,16 +20,35 @@ export class RequestService {
         // Return cached data if available
         if (this.requestsCache.length > 0) {
             console.log('Using cached requests data');
+            
+            // Return cache but refresh in background for next time
+            this.refreshCache();
+            
             return of(this.requestsCache);
         }
 
         return this.http.get<Request[]>(baseUrl).pipe(
             tap(requests => {
-                console.log('Caching requests data:', requests.length);
-                this.requestsCache = requests;
+                console.log('Fetched requests data:', requests);
                 
-                // Also cache individual requests by ID
-                requests.forEach(request => {
+                // Normalize request data structure
+                const processedRequests = requests.map(request => {
+                    const normalizedRequest = { ...request };
+                    
+                    // Handle API inconsistency - it might return requestItems or RequestItems 
+                    if (normalizedRequest['RequestItems'] && !normalizedRequest.requestItems) {
+                        normalizedRequest.requestItems = normalizedRequest['RequestItems'];
+                    } else if (!normalizedRequest.requestItems) {
+                        normalizedRequest.requestItems = [];
+                    }
+                    
+                    return normalizedRequest;
+                });
+                
+                this.requestsCache = processedRequests;
+                
+                // Cache individual requests by ID
+                processedRequests.forEach(request => {
                     if (request.id) {
                         this.requestByIdCache.set(request.id.toString(), request);
                     }
@@ -39,134 +56,185 @@ export class RequestService {
             }),
             catchError(error => {
                 console.error('Error getting all requests:', error);
-                throw error;
+                return throwError(() => this.extractErrorMessage(error));
             })
         );
     }
 
-    // Updated to remove all mock data
+    // Add a method to refresh the cache in the background
+    private refreshCache(): void {
+        this.http.get<Request[]>(baseUrl).pipe(
+            tap(requests => {
+                console.log('Background refreshed requests data');
+                
+                // Process requests as before
+                const processedRequests = requests.map(request => {
+                    const normalizedRequest = { ...request };
+                    
+                    if (normalizedRequest['RequestItems'] && !normalizedRequest.requestItems) {
+                        normalizedRequest.requestItems = normalizedRequest['RequestItems'];
+                    } else if (!normalizedRequest.requestItems) {
+                        normalizedRequest.requestItems = [];
+                    }
+                    
+                    return normalizedRequest;
+                });
+                
+                this.requestsCache = processedRequests;
+                
+                // Update cache
+                processedRequests.forEach(request => {
+                    if (request.id) {
+                        this.requestByIdCache.set(request.id.toString(), request);
+                    }
+                });
+            }),
+            catchError(error => {
+                console.error('Error refreshing requests cache:', error);
+                return of(null);
+            })
+        ).subscribe();
+    }
+
     getById(id: string): Observable<Request> {
         const idStr = id.toString();
         console.log(`Getting request with ID: ${idStr}`);
         
-        // First check user created requests (highest priority)
-        const userCreated = this.userCreatedRequests.get(idStr);
-        if (userCreated) {
-            console.log('Found user-created request:', userCreated);
-            return of(userCreated);
-        }
-        
         // Check if we have this request in our by-ID cache
         const cachedRequest = this.requestByIdCache.get(idStr);
         if (cachedRequest) {
-            console.log(`Using cached request for ID ${idStr}`);
+            console.log(`Using cached request for ID ${idStr}`, cachedRequest);
             return of(cachedRequest);
         }
         
         // Not in cache, fetch from API
         return this.http.get<Request>(`${baseUrl}/${id}`).pipe(
             tap(request => {
-                console.log('Retrieved request data from API');
+                console.log('Retrieved request data from API:', request);
+                
+                // Better request item handling
+                if (request) {
+                    // Ensure requestItems is properly set
+                    if (request['RequestItems'] && !request.requestItems) {
+                        request.requestItems = request['RequestItems'];
+                        console.log('Normalized RequestItems to requestItems:', request.requestItems);
+                    } else if (!request.requestItems) {
+                        request.requestItems = [];
+                        console.log('Initialized empty requestItems array');
+                    }
+                }
+                
                 this.requestByIdCache.set(idStr, request);
             }),
             catchError(error => {
                 console.error(`Error retrieving request with ID ${id}:`, error);
-                throw error;
+                return throwError(() => this.extractErrorMessage(error));
+            })
+        );
+    }
+
+    // Retry getting a request by ID if it fails
+    getByIdWithRetry(id: string, maxRetries = 2): Observable<Request> {
+        return this.getById(id).pipe(
+            catchError(error => {
+                // If we have this request in our cache, use that
+                const cachedRequest = this.requestByIdCache.get(id);
+                if (cachedRequest) {
+                    console.log(`Using cached request for ID ${id} after API error`);
+                    return of(cachedRequest);
+                }
+                
+                if (maxRetries > 0) {
+                    console.log(`Retrying getById for request ${id}, ${maxRetries} retries left`);
+                    return this.getByIdWithRetry(id, maxRetries - 1);
+                }
+                
+                return throwError(() => error);
             })
         );
     }
 
     create(request: Request): Observable<Request> {
-        // Generate a new ID if none exists
-        if (!request.id) {
-            request.id = Math.floor(Math.random() * 10000) + 100;
-        }
-      
-        // Save the request in our local cache
-        const savedRequest = { ...request };
-        console.log('Saving new request to local cache:', savedRequest);
-        this.userCreatedRequests.set(savedRequest.id.toString(), savedRequest);
-        this.requestByIdCache.set(savedRequest.id.toString(), savedRequest);
+        console.log('Creating new request:', request);
         
         return this.http.post<Request>(baseUrl, request).pipe(
             tap(createdRequest => {
+                console.log('Successfully created request:', createdRequest);
+                
                 // Update cache with the server response
                 if (createdRequest && createdRequest.id) {
                     this.requestByIdCache.set(createdRequest.id.toString(), createdRequest);
+                    // Clear the full requests cache to force a refresh
+                    this.requestsCache = [];
                 }
             }),
             catchError(error => {
                 console.error('Error creating request:', error);
-                // Return the locally saved request as fallback
-                return of(savedRequest);
+                return throwError(() => this.extractErrorMessage(error));
             })
         );
     }
 
     update(id: string, params: any): Observable<Request> {
-        // Update our local cache
-        const idStr = id.toString();
-        const existingRequest = this.getRequestFromCache(idStr);
-        
-        if (existingRequest) {
-            const updatedRequest = { ...existingRequest, ...params };
-            console.log('Updating request in local cache:', updatedRequest);
-            this.userCreatedRequests.set(idStr, updatedRequest);
-            this.requestByIdCache.set(idStr, updatedRequest);
-            
-            return this.http.put<Request>(`${baseUrl}/${id}`, params).pipe(
-                tap(responseRequest => {
-                    // Update cache with server response
-                    this.requestByIdCache.set(idStr, responseRequest);
-                }),
-                catchError(error => {
-                    console.error(`Error updating request ${id}:`, error);
-                    // Return the locally updated request as fallback
-                    return of(updatedRequest);
-                })
-            );
-        }
+        console.log(`Updating request ${id} with:`, params);
         
         return this.http.put<Request>(`${baseUrl}/${id}`, params).pipe(
+            tap(updatedRequest => {
+                console.log('Successfully updated request:', updatedRequest);
+                
+                // Update cache with the server response
+                if (updatedRequest) {
+                    this.requestByIdCache.set(id, updatedRequest);
+                    // Clear the full requests cache to force a refresh
+                    this.requestsCache = [];
+                }
+            }),
             catchError(error => {
                 console.error(`Error updating request ${id}:`, error);
-                throw error;
+                return throwError(() => this.extractErrorMessage(error));
             })
         );
     }
 
-    // Helper method to get request from either cache
-    private getRequestFromCache(id: string): Request {
-        // First check user created requests
-        const userCreated = this.userCreatedRequests.get(id);
-        if (userCreated) {
-            return userCreated;
-        }
-        
-        // Then check regular cache
-        return this.requestByIdCache.get(id) || null;
-    }
-
     delete(id: string): Observable<any> {
+        console.log(`Deleting request ${id}`);
+        
         // Remove from caches
-        const idStr = id.toString();
-        this.userCreatedRequests.delete(idStr);
-        this.requestByIdCache.delete(idStr);
+        this.requestByIdCache.delete(id);
+        // Clear the full requests cache to force a refresh
+        this.requestsCache = [];
         
         return this.http.delete<any>(`${baseUrl}/${id}`).pipe(
+            tap(() => console.log(`Successfully deleted request ${id}`)),
             catchError(error => {
                 console.error(`Error deleting request ${id}:`, error);
-                throw error;
+                return throwError(() => this.extractErrorMessage(error));
             })
         );
     }
 
     getByEmployee(employeeId: number): Observable<Request[]> {
+        console.log(`Getting requests for employee ${employeeId}`);
+        
         return this.http.get<Request[]>(`${baseUrl}/employee/${employeeId}`).pipe(
+            tap(requests => console.log(`Found ${requests.length} requests for employee ${employeeId}`)),
             catchError(error => {
                 console.error(`Error getting requests for employee ${employeeId}:`, error);
-                throw error;
+                return throwError(() => this.extractErrorMessage(error));
             })
         );
+    }
+
+    private extractErrorMessage(error: any): string {
+        if (error instanceof HttpErrorResponse) {
+            if (error.error?.message) {
+                return error.error.message;
+            } else if (error.status === 0) {
+                return 'Unable to connect to server. Please try again later.';
+            } else {
+                return `Error ${error.status}: ${error.statusText || 'Unknown error'}`;
+            }
+        }
+        return error?.message || 'An unknown error occurred';
     }
 }

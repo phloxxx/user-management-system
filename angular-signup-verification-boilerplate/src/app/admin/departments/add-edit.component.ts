@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { first } from 'rxjs/operators';
 import { Department } from '@app/_models';
 import { DepartmentService, AlertService } from '@app/_services';
@@ -9,18 +10,16 @@ import { DepartmentService, AlertService } from '@app/_services';
   templateUrl: './add-edit.component.html'
 })
 export class AddEditComponent implements OnInit {
+  form: FormGroup;
   id: string;
-  department: Department = {
-    name: '',
-    description: ''
-  };
-  errorMessage: string;
-  submitting = false;
+  isAddMode: boolean;
   loading = false;
+  submitting = false;
   submitted = false;
-  successMessage: string = '';
+  error = '';
   
   constructor(
+    private formBuilder: FormBuilder,
     private departmentService: DepartmentService,
     private alertService: AlertService,
     private route: ActivatedRoute,
@@ -29,95 +28,96 @@ export class AddEditComponent implements OnInit {
 
   ngOnInit() {
     this.id = this.route.snapshot.params['id'];
+    this.isAddMode = !this.id;
     
-    // If id exists, load the department data
-    if (this.id) {
-      // Don't show loading indicator for fast responses
+    // Form validation
+    this.form = this.formBuilder.group({
+      name: ['', Validators.required],
+      description: ['', Validators.required]
+    });
+    
+    if (!this.isAddMode) {
+      this.loading = true;
       this.departmentService.getById(this.id)
         .pipe(first())
         .subscribe({
-          next: (department) => {
-            if (department) {
-              this.department = department;
-            }
+          next: department => {
+            this.form.patchValue(department);
             this.loading = false;
           },
-          error: (error) => {
-            console.error('Error loading department data:', error);
-            // Show a quick toast instead of blocking the UI
-            this.alertService.error('Department data could not be loaded', { autoClose: true, keepAfterRouteChange: false });
+          error: error => {
+            this.error = 'Error loading department data';
+            this.alertService.error(this.error);
             this.loading = false;
+            console.error('Error loading department:', error);
           }
         });
-    } else {
-      console.log('Add mode - no department data to load');
     }
   }
+  
+  // Convenience getter for easy access to form fields
+  get f() { return this.form.controls; }
 
-  isFormInvalid(): boolean {
-    return !this.department.name || this.department.name.trim() === '' || 
-           !this.department.description || this.department.description.trim() === '';
-  }
-
-  save() {
+  onSubmit() {
     this.submitted = true;
-    this.clearMessages();
+    this.error = '';
     
-    // Return if form is invalid
-    if (this.isFormInvalid()) {
-      this.errorMessage = 'Please complete all required fields before saving.';
+    // Reset alerts
+    this.alertService.clear();
+    
+    // Stop here if form is invalid
+    if (this.form.invalid) {
       return;
     }
     
-    try {
-      if (this.id) {
-        this.departmentService.update(this.id, this.department)
-          .pipe(first())
-          .subscribe({
-            next: () => {
-              this.successMessage = 'Department updated successfully';
-              setTimeout(() => this.router.navigate(['../'], { relativeTo: this.route }), 1500);
-            },
-            error: error => {
-              this.errorMessage = error;
-            }
-          });
-      } else {
-        this.departmentService.create(this.department)
-          .pipe(first())
-          .subscribe({
-            next: () => {
-              this.successMessage = 'Department added successfully';
-              setTimeout(() => this.router.navigate(['../'], { relativeTo: this.route }), 1500);
-            },
-            error: error => {
-              this.errorMessage = error;
-            }
-          });
-      }
-    } catch (err) {
-      this.errorMessage = 'An unexpected error occurred. Please try again.';
-      console.error(err);
+    this.submitting = true;
+    
+    // Create the department object
+    const department: Department = {
+      name: this.form.value.name,
+      description: this.form.value.description
+    };
+    
+    console.log('Submitting department:', department);
+    
+    if (this.isAddMode) {
+      this.createDepartment(department);
+    } else {
+      this.updateDepartment(department);
     }
   }
-
-  clearError() {
-    this.errorMessage = '';
+  
+  private createDepartment(department: Department) {
+    this.departmentService.create(department)
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.alertService.success('Department added successfully', { keepAfterRouteChange: true });
+          this.router.navigate(['../'], { relativeTo: this.route });
+        },
+        error: error => {
+          this.error = error?.message || 'Error adding department';
+          this.alertService.error(this.error);
+          this.submitting = false;
+          console.error('Error creating department:', error);
+        }
+      });
   }
-
-  clearSuccess() {
-    this.successMessage = '';
-  }
-
-  clearMessages() {
-    this.errorMessage = '';
-    this.successMessage = '';
-  }
-
-  cancel() {
-    this.submitted = false;
-    this.clearMessages();
-    // Navigate back to departments list
-    this.router.navigate(['../'], { relativeTo: this.route });
+  
+  private updateDepartment(department: Department) {
+    this.departmentService.update(this.id, department)
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.alertService.success('Department updated successfully', { keepAfterRouteChange: true });
+          this.router.navigate(['../../'], { relativeTo: this.route });
+        },
+        error: error => {
+          this.error = error?.message || 'Error updating department';
+          this.alertService.error(this.error);
+          this.submitting = false;
+          console.error('Error updating department:', error);
+        }
+      });
   }
 }

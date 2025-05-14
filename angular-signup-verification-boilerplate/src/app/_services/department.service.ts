@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
 
 import { environment } from '@environments/environment';
 import { Department } from '@app/_models';
@@ -15,7 +15,6 @@ export class DepartmentService {
     
     constructor(private http: HttpClient) { }
 
-    // Add a new method to get departments with fast return option
     getAll(options?: { fastReturn?: boolean }) {
         // Fast return option will immediately return cached data
         if (options?.fastReturn && this.departmentsCache.length > 0) {
@@ -36,24 +35,16 @@ export class DepartmentService {
         
         // Cache is empty, do a full fetch
         return this.http.get<Department[]>(baseUrl).pipe(
+            tap(departments => console.log('Fetched departments:', departments)),
             map(departments => {
                 this.departmentsCache = departments; // Cache the results
                 return departments;
             }),
-            catchError(error => {
-                console.error('Error loading departments:', error);
-                // Return default departments if API fails
-                const defaultDepts = [
-                    { id: 1, name: 'Engineering', description: 'Software development team', employeeCount: 1 },
-                    { id: 2, name: 'Marketing', description: 'Marketing team', employeeCount: 1 }
-                ];
-                this.departmentsCache = defaultDepts;
-                return of(defaultDepts);
-            })
+            catchError(this.handleError)
         );
     }
 
-    // Add a background refresh function 
+    // Background refresh function 
     private refreshDepartmentsCache() {
         this.http.get<Department[]>(baseUrl).pipe(
             map(departments => {
@@ -74,33 +65,102 @@ export class DepartmentService {
             return of(cachedDept);
         }
         
+        // Not in cache, fetch from API
         return this.http.get<Department>(`${baseUrl}/${id}`).pipe(
-            catchError(error => {
-                console.error(`Error fetching department ID ${id}:`, error);
-                
-                // Try to get it from the full departments list
-                return this.getAll().pipe(
-                    map(departments => {
-                        const dept = departments.find(d => d.id === parseInt(id));
-                        if (!dept) {
-                            throw new Error(`Department with ID ${id} not found`);
-                        }
-                        return dept;
-                    })
-                );
-            })
+            tap(department => console.log('Fetched department by ID:', department)),
+            catchError(this.handleError)
         );
     }
 
     create(department: Department) {
-        return this.http.post<Department>(baseUrl, department);
+        // Clear the cache on create to force a refresh
+        this.departmentsCache = [];
+        
+        console.log('Department service creating department:', department);
+        
+        // Add headers to ensure proper content type
+        const httpOptions = {
+            headers: new HttpHeaders({
+                'Content-Type': 'application/json'
+            })
+        };
+        
+        // Ensure we only send data the API expects
+        const departmentData = {
+            name: department.name,
+            description: department.description
+        };
+        
+        // Log the exact request data being sent
+        console.log('Sending department creation request with data:', JSON.stringify(departmentData));
+        
+        return this.http.post<Department>(baseUrl, departmentData, httpOptions).pipe(
+            tap(newDepartment => console.log('Created department:', newDepartment)),
+            catchError(error => {
+                console.error('Department creation error:', error);
+                // Inspect the error in detail
+                if (error instanceof HttpErrorResponse) {
+                    console.error('Status:', error.status);
+                    console.error('Status text:', error.statusText);
+                    console.error('URL:', error.url);
+                    console.error('Error body:', error.error);
+                    console.error('Error type:', error.name);
+                }
+                return this.handleError(error);
+            })
+        );
     }
 
-    update(id: string, params: any) {
-        return this.http.put<Department>(`${baseUrl}/${id}`, params);
+    update(id: string, department: Department) {
+        // Clear the cache on update to force a refresh
+        this.departmentsCache = [];
+        
+        // Make sure we send exactly what the API expects
+        const departmentData = {
+            name: department.name,
+            description: department.description
+        };
+        
+        return this.http.put<Department>(`${baseUrl}/${id}`, departmentData).pipe(
+            tap(updatedDepartment => console.log('Updated department:', updatedDepartment)),
+            catchError(this.handleError)
+        );
     }
 
     delete(id: string) {
-        return this.http.delete(`${baseUrl}/${id}`);
+        // Clear the cache on delete to force a refresh
+        this.departmentsCache = [];
+        
+        return this.http.delete(`${baseUrl}/${id}`).pipe(
+            tap(() => console.log('Deleted department ID:', id)),
+            catchError(this.handleError)
+        );
+    }
+    
+    // Improved error handler
+    private handleError(error: HttpErrorResponse) {
+        console.error('API Error:', error);
+        
+        if (error.error instanceof ErrorEvent) {
+            // Client-side error
+            console.error('Client error:', error.error.message);
+            return throwError(() => ({ message: `Client error: ${error.error.message}` }));
+        } else {
+            // Server-side error
+            console.error(`Server error: ${error.status} ${error.statusText}`);
+            console.error('Error body:', error.error);
+            
+            let errorMessage: string;
+            
+            if (error.error?.message) {
+                errorMessage = error.error.message;
+            } else if (error.status === 0) {
+                errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
+            } else {
+                errorMessage = `Server error: ${error.status} ${error.statusText || 'Unknown error'}`;
+            }
+            
+            return throwError(() => ({ message: errorMessage }));
+        }
     }
 }

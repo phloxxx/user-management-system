@@ -215,11 +215,11 @@ const passwordSchema = Joi.string()
 ## Contributing
 * **Durano, Jhanna Kris** : Responsible for managing the main branch, reviewing pull requests, and ensuring smooth integration.
 Backend Developers (2 members):
-* **Real, Rovic Steve**: Implement email sign-up, verification, and authentication.
-* **Ocliasa, Niño Rollane**: Implement role-based authorization, forgot password/reset password, and CRUD operations.
+* **Real, Rovic Steve**: Implement email sign-up, verification, and authentication. In continuation, implemented workflows and requests.
+* **Ocliasa, Niño Rollane**: Implement role-based authorization, forgot password/reset password, and CRUD operations. In continuation, implemented employees and departments.
 Frontend Developers (2 members):
-* **Durano, Jhanna Kris**: Implement email sign-up, verification, and authentication.
-* **Arcana, Sean Joseph**: Implement profile management, admin dashboard, and fake backend.
+* **Durano, Jhanna Kris**: Implement email sign-up, verification, and authentication. In continuation, implemented the fake backend.
+* **Arcana, Sean Joseph**: Implement profile management, admin dashboard, and fake backend. In continuation, implemented the structure of ui (html).
 Testers (2 members):
 * **Real, Rovic Steve**:: Perform functional testing and validate user flows.
 * **Ocliasa, Niño Rollane**: Perform security testing and validate edge cases.

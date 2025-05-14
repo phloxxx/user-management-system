@@ -70,6 +70,11 @@ async function authenticate({ email, password, ipAddress }) {
 }
 
 async function refreshToken({ token, ipAddress }) {
+    // Check if token is undefined or empty
+    if (!token) {
+        throw 'Refresh token is required';
+    }
+    
     const refreshToken = await getRefreshToken(token);
     const account = await refreshToken.getAccount();
 
@@ -93,6 +98,11 @@ async function refreshToken({ token, ipAddress }) {
 }
 
 async function revokeToken({ token, ipAddress }) {
+    // Check if token is undefined or empty
+    if (!token) {
+        throw 'Refresh token is required';
+    }
+    
     const refreshToken = await getRefreshToken(token);
 
     // revoke token and save
@@ -238,7 +248,15 @@ async function getAccount(id) {
 }
 
 async function getRefreshToken(token) {
-    const refreshToken = await db.RefreshToken.findOne({ where: { token } });
+    // Add a check for undefined or empty token
+    if (!token) {
+        throw 'Invalid token';
+    }
+    
+    const refreshToken = await db.RefreshToken.findOne({ 
+        where: { token } 
+    });
+    
     if (!refreshToken || !refreshToken.isActive) throw 'Invalid token';
     return refreshToken;
 }

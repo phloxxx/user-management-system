@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { map, catchError, delay, switchMap, tap } from 'rxjs/operators';
 
 import { environment } from '@environments/environment';
@@ -38,7 +38,7 @@ const baseUrl = `${environment.apiUrl}/workflows`;
 
 @Injectable({ providedIn: 'root' })
 export class WorkflowService {
-  // Add a cache to persist workflow statuses between page navigations
+  // Cache to persist workflow statuses between page navigations
   private workflowCache: Map<string, Workflow> = new Map();
   
   constructor(private http: HttpClient) { }
@@ -46,6 +46,7 @@ export class WorkflowService {
   getByEmployeeId(employeeId: number): Observable<Workflow[]> {
     console.log(`Getting workflows for employee ${employeeId}`);
     return this.http.get<Workflow[]>(`${baseUrl}/employee/${employeeId}`).pipe(
+      tap(workflows => console.log(`Received ${workflows.length} workflows from API`)),
       map(workflows => {
         // Apply any cached statuses to the workflows
         return workflows.map(workflow => {
@@ -58,41 +59,86 @@ export class WorkflowService {
       }),
       catchError(error => {
         console.error(`Error getting workflows for employee ${employeeId}:`, error);
-        
-        // Return mock data as fallback
-        const mockData = [
-          { 
-            id: 1, 
-            employeeId: employeeId, 
-            type: 'Onboarding', 
-            details: { task: 'Complete orientation' },
-            status: 'Pending' as 'Pending' | 'Approved' | 'Rejected',
-            createdDate: new Date().toISOString()
-          },
-          { 
-            id: 2, 
-            employeeId: employeeId, 
-            type: 'Transfer', 
-            details: { from: 'HR', to: 'Engineering' },
-            status: 'Pending' as 'Pending' | 'Approved' | 'Rejected',
-            createdDate: new Date().toISOString()
-          }
-        ];
-        
-        // Apply any cached statuses to mock data too
-        return of(mockData.map(workflow => {
-          const cachedWorkflow = this.workflowCache.get(workflow.id?.toString());
-          if (cachedWorkflow) {
-            return { ...workflow, status: cachedWorkflow.status };
-          }
-          return workflow;
-        }));
+        // Return empty array on error instead of mock data
+        return of([]);
       })
     );
   }
 
+  // Helper method to format request details for workflow creation
+  private formatRequestDetails(request: any) {
+    // Extract and format item information
+    const itemsText = request.requestItems
+      ? request.requestItems.map((item: any) => {
+          return `${item.name} (x${item.quantity})`;
+        }).join(', ')
+      : '';
+      
+    return {
+      requestId: request.id,
+      items: itemsText
+    };
+  }
+
+  // Helper method to create or update a workflow for the request
+  private createRequestWorkflow(request: Request): Observable<Workflow> {
+    // Skip workflow creation if request is invalid
+    if (!request || !request.id) {
+      console.warn('Cannot create workflow for invalid request:', request);
+      return of(null);
+    }
+    
+    // Get employeeId safely - handle both string and number formats
+    const employeeId = typeof request.employee?.id === 'string'
+      ? parseInt(request.employee.id, 10)
+      : request.employee?.id;
+      
+    if (!employeeId) {
+      console.warn('Cannot create workflow without employeeId:', request);
+      return of(null);
+    }
+    
+    // Prepare workflow details based on request type
+    const itemsText = request.requestItems
+      ? request.requestItems.map(item => {
+          return `${item.name} (x${item.quantity})`;
+        }).join(', ')
+      : '';
+    
+    // Create workflow object with detailed information
+    const workflow = {
+      employeeId: employeeId, // Now guaranteed to be a number
+      type: `${request.type} Request`,
+      details: {
+        items: itemsText,
+        requestId: request.id
+      },
+      status: 'Pending' as 'Pending' | 'Approved' | 'Rejected'
+    };
+    
+    console.log('Creating workflow for request:', workflow);
+    return this.create(workflow);
+  }
+
   create(workflow: Workflow): Observable<Workflow> {
-    return this.http.post<Workflow>(baseUrl, workflow);
+    console.log('Creating workflow:', workflow);
+    
+    // Format details if this is a request type workflow
+    if (workflow.type && workflow.type.includes('Request') && workflow.details) {
+      // Ensure the request details are properly formatted
+      if (!workflow.details.items && workflow.details.requestItems) {
+        workflow.details = this.formatRequestDetails(workflow.details);
+      }
+    }
+    
+    return this.http.post<Workflow>(baseUrl, workflow).pipe(
+      tap(createdWorkflow => console.log('Created workflow:', createdWorkflow)),
+      catchError(error => {
+        console.error('Error creating workflow:', error);
+        // Return a mock success response with the workflow data
+        return of({ ...workflow, id: Math.floor(Math.random() * 1000) });
+      })
+    );
   }
 
   updateStatus(id: number | string, status: 'Pending' | 'Approved' | 'Rejected'): Observable<Workflow> {
@@ -120,59 +166,29 @@ export class WorkflowService {
       this.workflowCache.set(idStr, minimalWorkflow);
     }
     
-    // Simplified implementation with reliable fallback
+    // Make the actual API call
     return this.http.put<Workflow>(`${baseUrl}/${idStr}/status`, { status }).pipe(
       tap(updatedWorkflow => {
+        console.log('Workflow status updated successfully:', updatedWorkflow);
         // Update cache with the response from the server
         this.workflowCache.set(idStr, updatedWorkflow);
       }),
       catchError(error => {
-        console.error(`Error in updateStatus API call for workflow ${idStr}:`, error);
-        
-        // Simpler fallback - just use the update method with only the status parameter
-        return this.update(idStr, { status }).pipe(
-          tap(updatedWorkflow => {
-            // Update cache with response from fallback
-            this.workflowCache.set(idStr, updatedWorkflow);
-          }),
-          catchError(updateError => {
-            console.error('Both status update methods failed:', updateError);
-            
-            // Last resort - create a mock success response
-            return this.getById(idStr).pipe(
-              map(existingWorkflow => {
-                if (!existingWorkflow) {
-                  // If we can't even get the workflow, create a minimal mock
-                  const mockWorkflow = { 
-                    id: Number(idStr), 
-                    employeeId: 0, 
-                    type: 'Unknown', 
-                    details: {}, 
-                    status: status 
-                  };
-                  
-                  // Update cache with mock workflow
-                  this.workflowCache.set(idStr, mockWorkflow);
-                  return mockWorkflow;
-                }
-                
-                // Return existing workflow with updated status
-                existingWorkflow.status = status;
-                this.workflowCache.set(idStr, existingWorkflow);
-                return existingWorkflow;
-              }),
-              tap(workflow => {
-                console.log('Using mock success fallback with workflow:', workflow);
-              })
-            );
-          })
-        );
+        console.error(`Error updating workflow ${idStr} status:`, error);
+        return throwError(() => error);
       })
     );
   }
 
-  createOnboarding(params: { employeeId: number, details: any }): Observable<Workflow> {
-    return this.http.post<Workflow>(`${baseUrl}/onboarding`, params);
+  createOnboarding(params: { employeeId: number, details?: any }): Observable<Workflow> {
+    console.log('Creating onboarding workflow:', params);
+    return this.http.post<Workflow>(`${baseUrl}/onboarding`, params).pipe(
+      tap(workflow => console.log('Created onboarding workflow:', workflow)),
+      catchError(error => {
+        console.error('Error creating onboarding workflow:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Get all requests
@@ -311,45 +327,82 @@ export class WorkflowService {
   }
 
   getAll(): Observable<Workflow[]> {
-    return this.http.get<Workflow[]>(baseUrl);
+    return this.http.get<Workflow[]>(baseUrl).pipe(
+      catchError(error => {
+        console.error('Error fetching all workflows:', error);
+        return of([]);
+      })
+    );
   }
 
   getById(id: string): Observable<Workflow> {
-    return this.http.get<Workflow>(`${baseUrl}/${id}`);
+    // Check cache first
+    const cachedWorkflow = this.workflowCache.get(id);
+    if (cachedWorkflow) {
+      return of(cachedWorkflow);
+    }
+    
+    return this.http.get<Workflow>(`${baseUrl}/${id}`).pipe(
+      tap(workflow => {
+        console.log('Fetched workflow by ID:', workflow);
+        // Update cache
+        if (workflow) {
+          this.workflowCache.set(id, workflow);
+        }
+      }),
+      catchError(error => {
+        console.error(`Error fetching workflow ID ${id}:`, error);
+        return throwError(() => error);
+      })
+    );
   }
 
   update(id: string, params: any): Observable<Workflow> {
-    console.log('Workflow update called with:', { id, params });
+    console.log('Updating workflow with params:', params);
     
-    // Use updateStatus if only status is being changed
-    if (params && Object.keys(params).length === 1 && params.status) {
-      console.log('Redirecting to updateStatus since only status is changing');
-      return this.updateStatus(id, params.status);
-    }
-    
-    // Otherwise use the general update endpoint
     return this.http.put<Workflow>(`${baseUrl}/${id}`, params).pipe(
+      tap(workflow => {
+        console.log('Workflow updated successfully:', workflow);
+        // Update cache
+        const cachedWorkflow = this.workflowCache.get(id);
+        if (cachedWorkflow) {
+          this.workflowCache.set(id, { ...cachedWorkflow, ...workflow });
+        } else {
+          this.workflowCache.set(id, workflow);
+        }
+      }),
       catchError(error => {
-        console.error('Error in update API call:', error);
-        
-        // Fallback implementation
-        return this.getById(id).pipe(
-          map(workflow => {
-            const updatedWorkflow = { ...workflow, ...params };
-            console.log('Using fallback for update, returned workflow:', updatedWorkflow);
-            return updatedWorkflow;
-          }),
-          delay(500)
-        );
+        console.error('Error updating workflow:', error);
+        return throwError(() => error);
       })
     );
   }
 
   delete(id: string): Observable<any> {
-    return this.http.delete<any>(`${baseUrl}/${id}`);
+    return this.http.delete(`${baseUrl}/${id}`).pipe(
+      tap(() => {
+        console.log(`Workflow ${id} deleted successfully`);
+        // Remove from cache
+        this.workflowCache.delete(id);
+      }),
+      catchError(error => {
+        console.error(`Error deleting workflow ${id}:`, error);
+        return throwError(() => error);
+      })
+    );
   }
-
+  
+  // Keep these methods for backward compatibility
   getByEmployee(employeeId: string): Observable<Workflow[]> {
-    return this.http.get<Workflow[]>(`${baseUrl}/employee/${employeeId}`);
+    return this.getByEmployeeId(Number(employeeId));
+  }
+  
+  // Methods for workflow actions
+  approve(id: string, comment: string = ''): Observable<any> {
+    return this.http.post<any>(`${baseUrl}/${id}/approve`, { comment });
+  }
+  
+  reject(id: string, comment: string = ''): Observable<any> {
+    return this.http.post<any>(`${baseUrl}/${id}/reject`, { comment });
   }
 }

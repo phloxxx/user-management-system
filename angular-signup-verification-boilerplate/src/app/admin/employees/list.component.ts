@@ -1,13 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { first } from 'rxjs/operators';
-import { HttpClient } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { first, catchError } from 'rxjs/operators';
 
 import { AccountService, AlertService } from '@app/_services';
 import { EmployeeService } from '@app/_services/employee.service';
 import { DepartmentService } from '@app/_services/department.service';
-import { environment } from '@environments/environment';
 
 @Component({
   selector: 'app-list',
@@ -18,14 +16,14 @@ export class ListComponent implements OnInit {
     users: any[] = [];
     departments: any[] = [];
     loading: boolean = false;
+    error: string = '';
     
     constructor(
         private employeeService: EmployeeService,
         private accountService: AccountService,
         private departmentService: DepartmentService,
         private alertService: AlertService,
-        private router: Router,
-        private http: HttpClient
+        private router: Router
     ) {}
 
     ngOnInit() {
@@ -35,25 +33,51 @@ export class ListComponent implements OnInit {
     
     // Load all necessary data from the API
     loadAllData() {
-        // Use forkJoin to load all data in parallel
+        // Load departments and users even if employees fail
         forkJoin({
-            employees: this.employeeService.getAll(),
-            users: this.accountService.getAll(),
-            departments: this.departmentService.getAll()
+            employees: this.employeeService.getAll().pipe(
+                catchError(error => {
+                    console.error('Error loading employees:', error);
+                    this.error = 'Failed to load employees. Please try again.';
+                    return of([]);
+                })
+            ),
+            users: this.accountService.getAll().pipe(
+                catchError(error => {
+                    console.error('Error loading users:', error);
+                    return of([]);
+                })
+            ),
+            departments: this.departmentService.getAll().pipe(
+                catchError(error => {
+                    console.error('Error loading departments:', error);
+                    return of([]);
+                })
+            )
         })
         .pipe(first())
         .subscribe({
             next: (data) => {
-                this.employees = data.employees;
-                this.users = data.users;
-                this.departments = data.departments;
+                this.employees = data.employees || [];
+                this.users = data.users || [];
+                this.departments = data.departments || [];
                 this.loading = false;
-                console.log('All data loaded successfully');
+                console.log('All data loaded successfully', {
+                    employees: this.employees.length,
+                    users: this.users.length,
+                    departments: this.departments.length
+                });
+                
+                // Clear error if we have successfully loaded employees
+                if(this.employees.length > 0) {
+                    this.error = '';
+                }
             },
             error: (error) => {
-                console.error('Error loading data:', error);
-                this.alertService.error('Failed to load data. Please try again.');
+                this.error = 'Failed to load data. Please try again.';
+                this.alertService.error(this.error);
                 this.loading = false;
+                console.error('Error in forkJoin:', error);
             }
         });
     }
@@ -66,13 +90,20 @@ export class ListComponent implements OnInit {
                 next: (employees) => {
                     this.employees = employees;
                     this.loading = false;
+                    this.error = '';
                 },
                 error: (error) => {
-                    console.error('Error fetching employees:', error);
-                    this.alertService.error('Failed to load employees');
+                    this.error = 'Failed to load employees';
+                    this.alertService.error(this.error);
                     this.loading = false;
+                    console.error('Error fetching employees:', error);
                 }
             });
+    }
+    
+    retry() {
+        this.error = '';
+        this.loadAllData();
     }
     
     account() {
@@ -108,28 +139,18 @@ export class ListComponent implements OnInit {
         }
     }
     
-    viewRequests(id: string) {
-        this.router.navigate(['/admin/requests'], { 
-            queryParams: { employeeId: id }
-        });
-    }
-    
-    viewWorkflows(id: string) {
-        this.router.navigate(['/admin/employees', id, 'workflows']);
-    }
-
     getUserEmail(userId: any): string {
         if (!userId) {
             return 'No User Assigned';
         }
         
         const userIdStr = userId.toString();
-        const user = this.users.find(x => x.id.toString() === userIdStr);
+        const user = this.users.find(x => x.id && x.id.toString() === userIdStr);
         
         if (user) {
             return user.email;
         } else {
-            return `Unknown User`;
+            return `Unknown User (ID: ${userId})`;
         }
     }
 
@@ -144,7 +165,21 @@ export class ListComponent implements OnInit {
         if (department) {
             return department.name;
         } else {
-            return `Unknown Department`;
+            return `Unknown Department (ID: ${departmentId})`;
         }
+    }
+
+    viewWorkflows(id: string) {
+        // Navigate to workflows page for this employee
+        this.router.navigate(['/admin/workflows'], { 
+            queryParams: { employeeId: id } 
+        });
+    }
+
+    viewRequests(id: string) {
+        // Navigate to the requests page for this employee
+        this.router.navigate(['/admin/requests'], { 
+            queryParams: { employeeId: id } 
+        });
     }
 }

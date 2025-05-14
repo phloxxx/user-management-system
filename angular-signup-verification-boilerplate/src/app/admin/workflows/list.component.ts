@@ -3,42 +3,49 @@ import { first, timeout, catchError } from 'rxjs/operators';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, Subscription, timer } from 'rxjs';
 
-import { AccountService, WorkflowService, AlertService } from '@app/_services';
-import { Account, Workflow } from '@app/_models';
+import { AccountService, WorkflowService, AlertService, EmployeeService } from '@app/_services';
+import { Workflow } from '@app/_models';
 
 @Component({ templateUrl: 'list.component.html' })
 export class ListComponent implements OnInit, OnDestroy {
     workflows: Workflow[] = [];
-    employeeId: string = 'All';
+    employeeId: string = null;
+    employeeName: string = '';
     loading: boolean = false;
     error: string = '';
     private subscriptions: Subscription[] = [];
-
+    
     constructor(
         private accountService: AccountService,
         private workflowService: WorkflowService,
+        private employeeService: EmployeeService,
         private route: ActivatedRoute,
         private router: Router,
         private alertService: AlertService
     ) {}
 
     ngOnInit() {
-        // Get employee ID from route parameters
-        this.route.parent?.params.subscribe(params => {
-            if (params['id']) {
-                this.employeeId = params['id'];
+        // Get employee ID from route query params
+        this.route.queryParams.subscribe(params => {
+            if (params.employeeId) {
+                this.employeeId = params.employeeId;
+                this.loadEmployeeDetails();
+                this.loadWorkflows();
+            } else {
+                // No employee ID in query params, check URL params
+                const urlEmployeeId = this.route.snapshot.params['id'];
+                if (urlEmployeeId) {
+                    this.employeeId = urlEmployeeId;
+                    this.loadEmployeeDetails();
+                    this.loadWorkflows();
+                } else {
+                    this.error = 'No employee specified. Please go back and select an employee.';
+                }
             }
         });
         
-        if (!this.employeeId || this.employeeId === 'All') {
-            this.employeeId = this.route.snapshot.params['id'] || 'All';
-        }
-
-        // Load workflows with better error handling
-        this.loadWorkflows();
-        
         // Add a fallback timeout to prevent endless loading state
-        const loadingTimeout = timer(5000).subscribe(() => {
+        const loadingTimeout = timer(8000).subscribe(() => {
             if (this.loading) {
                 console.warn('Loading timeout exceeded');
                 this.loading = false;
@@ -63,144 +70,103 @@ export class ListComponent implements OnInit, OnDestroy {
     account() {
         return this.accountService.accountValue;
     }
+    
+    private loadEmployeeDetails() {
+        if (!this.employeeId) return;
+        
+        // Load employee details to display name
+        this.employeeService.getById(this.employeeId)
+            .pipe(first())
+            .subscribe({
+                next: (employee) => {
+                    if (employee) {
+                        this.employeeName = `${employee.employeeId}`;
+                    }
+                },
+                error: (error) => {
+                    console.error('Error loading employee details:', error);
+                }
+            });
+    }
 
     private loadWorkflows() {
+        if (!this.employeeId) return;
+        
         this.loading = true;
         this.error = '';
         
-        // Add a shorter timeout to ensure UI shows quickly
-        setTimeout(() => {
-            if (this.loading) {
-                this.loading = false;
-                if (this.workflows.length === 0) {
-                    this.showMockData();
-                }
-            }
-        }, 1500); // Reduced from 5000ms to 1500ms
-        
-        if (this.employeeId !== 'All') {
-            const numericId = parseInt(this.employeeId);
-            if (!isNaN(numericId)) {
-                console.log(`Loading workflows for employee ID: ${numericId}`);
-                
-                this.workflowService.getByEmployeeId(numericId)
-                    .pipe(
-                        first(),
-                        timeout(4000), // Add timeout to avoid waiting too long
-                        catchError(error => {
-                            console.error('Error loading workflows:', error);
-                            this.error = 'Could not load workflows data. Showing sample data instead.';
-                            this.loading = false;
-                            
-                            // Return mock data on error
-                            return of(this.getMockWorkflows(numericId));
-                        })
-                    )
-                    .subscribe(workflows => {
-                        console.log(`Loaded ${workflows.length} workflows`);
+        const numericId = parseInt(this.employeeId);
+        if (!isNaN(numericId)) {
+            console.log(`Loading workflows for employee ID: ${numericId}`);
+            
+            this.workflowService.getByEmployeeId(numericId)
+                .pipe(first())
+                .subscribe({
+                    next: (workflows) => {
+                        console.log(`Received ${workflows.length} workflows`);
                         this.workflows = workflows;
                         this.loading = false;
                         
-                        // If no workflows were returned, show mock data
+                        // If no workflows were returned, show a helpful message
                         if (this.workflows.length === 0) {
-                            this.showMockData();
+                            this.error = 'No workflows found for this employee.';
                         }
-                    });
-            } else {
-                this.loading = false;
-                this.error = 'Invalid employee ID';
-            }
+                    },
+                    error: (error) => {
+                        console.error('Error loading workflows:', error);
+                        this.error = 'Failed to load workflows. Please try again.';
+                        this.loading = false;
+                        
+                        // Show mock data on error for better UX
+                        this.showMockData();
+                    }
+                });
         } else {
-            this.showMockData();
             this.loading = false;
+            this.error = 'Invalid employee ID';
         }
     }
     
     private showMockData() {
         // Create some realistic mock data for demonstration
         const employeeIdNum = parseInt(this.employeeId) || 1;
-        this.workflows = this.getMockWorkflows(employeeIdNum);
-    }
-    
-    private getMockWorkflows(employeeId: number): Workflow[] {
-        return [
+        this.workflows = [
             { 
                 id: 100, 
-                employeeId: employeeId, 
+                employeeId: employeeIdNum, 
                 type: 'Onboarding', 
                 details: { task: 'Complete orientation and training' },
-                status: 'Approved' as 'Pending' | 'Approved' | 'Rejected',
+                status: 'Approved',
                 createdDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
             },
             { 
                 id: 101, 
-                employeeId: employeeId, 
+                employeeId: employeeIdNum, 
                 type: 'Transfer', 
                 details: { from: 'HR', to: 'Engineering' },
-                status: 'Pending' as 'Pending' | 'Approved' | 'Rejected',
+                status: 'Pending',
                 createdDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
             }
         ];
     }
 
-    // Updated method to handle status change from dropdown menu
-    updateWorkflowStatus(workflow: Workflow, status: 'Pending' | 'Approved' | 'Rejected') {
-        if (workflow.id && workflow.status !== status) {
-            workflow.status = status;
-            this.workflowService.updateStatus(workflow.id, status)
-                .pipe(first())
-                .subscribe({
-                    next: () => {
-                        this.alertService.success(`Workflow status updated to ${status}`);
-                    },
-                    error: error => {
-                        this.alertService.error('Error updating workflow status');
-                        console.error('Error updating workflow status:', error);
-                    }
-                });
-        }
-    }
-
-    updateStatus(workflow: any) {
-        // Show loading indicator or disable the dropdown during update
-        const originalStatus = workflow.status;
+    updateStatus(workflow: Workflow) {
+        // Show loading indicator during update
         workflow.updating = true;
         
-        // Artificially introduce a small delay to show the updating indicator
-        setTimeout(() => {
-            this.workflowService.updateStatus(workflow.id, workflow.status)
-                .pipe(
-                    first(),
-                    timeout(3000), // Add timeout to avoid waiting too long
-                    catchError(error => {
-                        console.error('Error updating workflow status:', error);
-                        return of({ ...workflow, status: workflow.status }); // Return a mocked success
-                    })
-                )
-                .subscribe({
-                    next: (updatedWorkflow) => {
-                        workflow.updating = false;
-                        
-                        if (updatedWorkflow) {
-                            workflow.status = updatedWorkflow.status;
-                            this.alertService.success(`Workflow status updated to ${workflow.status}`, { keepAfterRouteChange: true });
-                            console.log(`Workflow ${workflow.id} status updated to ${workflow.status}`);
-                        } else {
-                            this.alertService.success(`Status updated to ${workflow.status}`);
-                        }
-                    },
-                    error: (error) => {
-                        workflow.updating = false;
-                        workflow.status = originalStatus;
-                        this.alertService.error('Could not update workflow status. Please try again.');
-                    }
-                });
-        }, 300); // Small delay for better UX
-    }
-
-    // Method to navigate back to employees list
-    back() {
-        this.router.navigate(['/admin/employees']);
+        this.workflowService.updateStatus(workflow.id, workflow.status)
+            .pipe(first())
+            .subscribe({
+                next: () => {
+                    workflow.updating = false;
+                    this.alertService.success(`Workflow status updated to ${workflow.status}`);
+                },
+                error: (error) => {
+                    workflow.updating = false;
+                    console.error('Error updating workflow status:', error);
+                    this.alertService.error('Failed to update workflow status');
+                }
+            });
     }
 
     // Format workflow details based on type
@@ -241,5 +207,40 @@ export class ListComponent implements OnInit, OnDestroy {
     objectIsEmpty(obj: any): boolean {
         if (!obj) return true;
         return Object.keys(obj).length === 0;
+    }
+    
+    // Method to navigate back to employees list
+    back() {
+        this.router.navigate(['/admin/employees']);
+    }
+    
+    // Add a new method for creating a new workflow (onboarding)
+    createOnboarding() {
+        if (!this.employeeId) return;
+        
+        const numericId = parseInt(this.employeeId);
+        if (!isNaN(numericId)) {
+            this.workflowService.createOnboarding({ employeeId: numericId })
+                .pipe(first())
+                .subscribe({
+                    next: (workflow) => {
+                        this.alertService.success('Onboarding workflow created successfully');
+                        // Add the new workflow to the list
+                        this.workflows.unshift(workflow);
+                    },
+                    error: (error) => {
+                        console.error('Error creating onboarding workflow:', error);
+                        this.alertService.error('Failed to create onboarding workflow');
+                    }
+                });
+        }
+    }
+
+    // Add this helper method to split the items string into an array for better display
+    splitItemsList(itemsString: string): string[] {
+        if (!itemsString) return [];
+        
+        // Split the string by commas, and trim each item
+        return itemsString.split(',').map(item => item.trim());
     }
 }
