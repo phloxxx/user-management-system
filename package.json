@@ -7,9 +7,10 @@
     "install:frontend": "cd angular-signup-verification-boilerplate && npm install",
     "install:backend": "cd node-mysql-boilerplate-api && npm install",
     "install:all": "npm run install:frontend && npm run install:backend",
-    "start:frontend": "cd angular-signup-verification-boilerplate && npm start",
+    "start:frontend": "cd angular-signup-verification-boilerplate && ng serve",
     "start:backend": "cd node-mysql-boilerplate-api && npm start",
-    "start": "node node-mysql-boilerplate-api/server.js",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:server": "node node-mysql-boilerplate-api/server.js",
     "dev": "nodemon node-mysql-boilerplate-api/server.js"
   },
   "dependencies": {
@@ -17,7 +18,6 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "express-jwt": "^8.5.1",
     "joi": "^17.13.3",
     "rootpath": "^0.1.2"
   },
