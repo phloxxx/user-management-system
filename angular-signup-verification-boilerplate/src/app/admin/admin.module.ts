@@ -1,22 +1,24 @@
 import { NgModule } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 
+// Import components
 import { AdminRoutingModule } from './admin-routing.module';
-import { SubNavComponent } from './subnav.component';
 import { LayoutComponent } from './layout.component';
 import { OverviewComponent } from './overview.component';
-
+import { SubnavComponent } from './subnav.component';
 @NgModule({
     imports: [
         CommonModule,
-        AdminRoutingModule,
         ReactiveFormsModule,
+        AdminRoutingModule,
+        RouterModule
     ],
     declarations: [
-        SubNavComponent,
         LayoutComponent,
         OverviewComponent,
+        SubnavComponent,
     ]
 })
 export class AdminModule { }

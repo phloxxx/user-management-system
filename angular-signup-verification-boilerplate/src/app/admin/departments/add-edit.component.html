@@ -1,0 +1,22 @@
+<div class="card">
+    <div class="card-header">{{ id ? 'Edit' : 'Add'}} Department</div>
+    <div class="card-body">
+        <div class="alert alert-danger" *ngIf="errorMessage">{{errorMessage}}</div>
+        
+        <form>
+            <div class="mb-3">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control" [(ngModel)]="department.name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control" [(ngModel)]="department.description" name="description">
+            </div>
+            <div class="text-center">
+                <button class="btn btn-primary" (click)="save()">Save</button>
+                <span style="display: inline-block; width: 10px;"></span>
+                <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>

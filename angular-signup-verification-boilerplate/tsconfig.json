@@ -1,10 +1,10 @@
 {
-    "extends": "./tsconfig.base.json",
-    "compilerOptions": {
-      "baseUrl": "./",
-      "paths": {
-        "@app/*": ["src/app/*"],
-        "@environments/*": ["src/environments/*"]
-      }
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@app/*": ["src/app/*"],
+      "@environments/*": ["src/environments/*"]
     }
   }
+}

@@ -126,19 +126,39 @@ export class AccountService {
 
     // helper methods
 
-    private refreshTokenTimeout;
+    private refreshTokenTimeout;    private startRefreshTokenTimer() {
+        try {
+            // parse json object from base64 encoded jwt token
+            const jwtToken = JSON.parse(atob(this.accountValue.jwtToken.split('.')[1]));
 
-    private startRefreshTokenTimer() {
-        // parse json object from base64 encoded jwt token
-        const jwtToken = JSON.parse(atob(this.accountValue.jwtToken.split('.')[1]));
-
-        // set a timeout to refresh the token a minute before it expires
-        const expires = new Date(jwtToken.exp * 1000);
-        const timeout = expires.getTime() - Date.now() - (60 * 1000);
-        this.refreshTokenTimeout = setTimeout(() => this.refreshToken().subscribe(), timeout);
+            // set a timeout to refresh the token a minute before it expires
+            const expires = new Date(jwtToken.exp * 1000);
+            const timeout = expires.getTime() - Date.now() - (60 * 1000);
+            
+            // Make sure we don't set a negative timeout
+            if (timeout > 0) {
+                console.log(`Token refresh scheduled in ${Math.round(timeout/1000)} seconds`);
+                this.refreshTokenTimeout = setTimeout(() => {
+                    console.log('Refreshing token...');
+                    this.refreshToken().subscribe({
+                        next: () => console.log('Token refreshed successfully'),
+                        error: error => console.error('Token refresh failed:', error)
+                    });
+                }, timeout);
+            } else {
+                // Token already expired, try to refresh immediately
+                console.log('Token already expired, refreshing immediately');
+                this.refreshToken().subscribe();
+            }
+        } catch (error) {
+            console.error('Error starting token refresh timer:', error);
+        }
     }
 
     private stopRefreshTokenTimer() {
-        clearTimeout(this.refreshTokenTimeout);
+        if (this.refreshTokenTimeout) {
+            clearTimeout(this.refreshTokenTimeout);
+            this.refreshTokenTimeout = null;
+        }
     }
 }

@@ -8,9 +8,11 @@ import { Role } from '@app/_models';
 
 // array in local storage for accounts
 const accountsKey = 'angular-10-signup-verification-boilerplate-accounts';
+
+// Get accounts from local storage
 let accounts = JSON.parse(localStorage.getItem(accountsKey)) || [];
 
-// Ensure all accounts have isActive property
+// Make sure all accounts have the required fields
 accounts = accounts.map(account => {
     // Default to active if not specified
     if (account.isActive === undefined) {
@@ -22,6 +24,11 @@ accounts = accounts.map(account => {
         account.isActive = true;
     }
     
+    // Ensure refreshTokens array exists
+    if (!account.refreshTokens) {
+        account.refreshTokens = [];
+    }
+    
     return account;
 });
 
@@ -30,11 +37,16 @@ localStorage.setItem(accountsKey, JSON.stringify(accounts));
 
 @Injectable()
 export class FakeBackendInterceptor implements HttpInterceptor {
-    constructor(private alertService: AlertService) { }
+    constructor(private alertService: AlertService) {
+        // Make sure our accounts and users are synchronized on startup
+        this.ensureDefaultAdminAccount();
+        this.syncUsersWithAccounts();
+        console.log('FakeBackendInterceptor initialized with users:', this.users);
+    }
 
     private users = [
-        { id: 1, email: 'admin@example.com', password: 'admin', role: 'Admin', employeeId: 1 },
-        { id: 2, email: 'user@example.com', password: 'user', role: 'User', employeeId: 2 }
+        { id: 1, email: 'admin@example.com', password: 'admin', role: Role.Admin, employeeId: 1 },
+        { id: 2, email: 'user@example.com', password: 'user', role: Role.User, employeeId: 2 }
     ];
 
     private employees = [
@@ -54,6 +66,112 @@ export class FakeBackendInterceptor implements HttpInterceptor {
     private requests = [
         { id: 1, employeeId: 2, type: 'Equipment', requestItems: [{ name: 'Laptop', quantity: 1 }], status: 'Pending' }
     ];
+
+    // Make sure we have a default admin account in localStorage
+    private ensureDefaultAdminAccount() {
+        try {
+            console.log('Ensuring default admin account exists...');
+            
+            const storedAccounts = JSON.parse(localStorage.getItem(accountsKey)) || [];
+            const adminAccount = storedAccounts.find(a => a.role === Role.Admin);
+            
+            if (!adminAccount) {
+                console.log('No admin account found in localStorage, creating one...');
+                const newAdminAccount = {
+                    id: 1,
+                    title: 'Mr',
+                    firstName: 'Admin',
+                    lastName: 'User',
+                    email: 'admin@example.com',
+                    password: 'admin',
+                    role: Role.Admin,
+                    isVerified: true,
+                    isActive: true,
+                    dateCreated: new Date().toISOString(),
+                    refreshTokens: []
+                };
+                
+                storedAccounts.push(newAdminAccount);
+                localStorage.setItem(accountsKey, JSON.stringify(storedAccounts));
+                console.log('Created admin account:', newAdminAccount);
+                
+                // Update our global accounts variable
+                accounts = JSON.parse(localStorage.getItem(accountsKey)) || [];
+            }
+        } catch (error) {
+            console.error('Error ensuring default admin account:', error);
+        }
+    }
+
+    // Helper method to synchronize localStorage accounts with hardcoded users array
+    private syncUsersWithAccounts() {
+        try {
+            console.log('Synchronizing localStorage accounts with users array...');
+            
+            // Get accounts from localStorage
+            const storedAccounts = JSON.parse(localStorage.getItem(accountsKey)) || [];
+            console.log('Stored accounts:', storedAccounts.map(a => ({ id: a.id, email: a.email, role: a.role })));
+            
+            // First, make sure our hardcoded users match what's in the accounts
+            storedAccounts.forEach(account => {
+                let matchingUser = this.users.find(u => u.email === account.email);
+                
+                if (matchingUser) {
+                    // Update the hardcoded user to match the account (especially the role)
+                    console.log(`Syncing user ${matchingUser.email} with role ${account.role}`);
+                    matchingUser.role = account.role;
+                    matchingUser.id = account.id; // Ensure IDs match
+                } else {
+                    // Create a new user if it doesn't exist in the hardcoded users
+                    console.log(`User not found for account ${account.email}, creating...`);
+                    this.users.push({
+                        id: account.id,
+                        email: account.email,
+                        password: account.password || 'password',
+                        role: account.role,
+                        employeeId: account.id
+                    });
+                }
+            });
+            
+            // Now, make sure all hardcoded users exist in accounts
+            this.users.forEach(user => {
+                const matchingAccount = storedAccounts.find(a => a.email === user.email);
+                
+                if (!matchingAccount) {
+                    // Create an account for this hardcoded user
+                    console.log(`Account not found for user ${user.email}, creating...`);
+                    const newAccount = {
+                        id: user.id,
+                        title: 'Mr',
+                        firstName: user.email.split('@')[0],
+                        lastName: 'User',
+                        email: user.email,
+                        password: user.password,
+                        role: user.role,
+                        isVerified: true,
+                        isActive: true,
+                        dateCreated: new Date().toISOString(),
+                        refreshTokens: []
+                    };
+                    
+                    storedAccounts.push(newAccount);
+                }
+            });
+            
+            // Save any changes back to localStorage
+            localStorage.setItem(accountsKey, JSON.stringify(storedAccounts));
+            
+            // Update the global accounts variable
+            accounts = JSON.parse(localStorage.getItem(accountsKey)) || [];
+            
+            console.log('Synchronization complete:');
+            console.log('- Updated users:', this.users);
+            console.log('- Updated accounts:', accounts.map(a => ({ id: a.id, email: a.email, role: a.role })));
+        } catch (error) {
+            console.error('Error synchronizing users with accounts:', error);
+        }
+    }
 
     intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         const { url, method, headers, body } = request;
@@ -135,11 +253,15 @@ export class FakeBackendInterceptor implements HttpInterceptor {
 
         // HR System route functions
         function getEmployees() {
-            return authorize(null, () => ok(self.employees));
+            return authorize(null, () => {
+                // Additional logging to debug authorization issues
+                console.log('Fake backend: Authorized user accessing employees data');
+                return ok(self.employees);
+            });
         }
         
         function createEmployee() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const employee = { id: self.employees.length + 1, ...body };
                 self.employees.push(employee);
                 return ok(employee);
@@ -155,7 +277,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function updateEmployee() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/').pop()!);
                 const employeeIndex = self.employees.findIndex(e => e.id === id);
                 if (employeeIndex === -1) return error('Employee not found');
@@ -165,7 +287,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function deleteEmployee() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/').pop()!);
                 self.employees = self.employees.filter(e => e.id !== id);
                 return ok({ message: 'Employee deleted' });
@@ -173,7 +295,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function transferEmployee() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/')[2]);
                 const employee = self.employees.find(e => e.id === id);
                 if (!employee) return error('Employee not found');
@@ -194,15 +316,91 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function createDepartment() {
-            return authorize('Admin', () => {
+            console.log('=======================================================');
+            console.log('CREATE DEPARTMENT DEBUG - START');
+            console.log('=======================================================');
+            console.log('Create department called with body:', body);
+            
+            logAuthStatus('POST /departments');
+            
+            // Log the token parsing details
+            const authHeader = headers.get('Authorization');
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                const token = authHeader.substring(7);
+                console.log('Token being used for department creation:', token.substring(0, 20) + '...');
+                
+                try {
+                    if (token.startsWith('fake-jwt-token.')) {
+                        const payload = token.split('.')[1];
+                        const decodedPayload = JSON.parse(atob(payload));
+                        console.log('Decoded token payload:', decodedPayload);
+                        
+                        // Check token expiration
+                        const tokenExpires = new Date(decodedPayload.exp * 1000);
+                        const now = new Date();
+                        console.log('Token expires at:', tokenExpires.toISOString());
+                        console.log('Current time:', now.toISOString());
+                        console.log('Token expired:', tokenExpires < now);
+                        
+                        // Log account information
+                        const account = accounts.find(x => x.id === decodedPayload.id);
+                        if (account) {
+                            console.log('Account found from token:', {
+                                id: account.id,
+                                email: account.email,
+                                role: account.role,
+                                isActive: account.isActive
+                            });
+                            
+                            // Find matching user in self.users array
+                            console.log('Available users:', self.users);
+                            const user = self.users.find(u => u.email === account.email);
+                            if (user) {
+                                console.log('User found from account:', user);
+                                console.log('User has Admin role:', user.role === Role.Admin);
+                            } else {
+                                console.log('⚠️ ERROR: No matching user found in users array for account email:', account.email);
+                                console.log('This may be why authorization is failing!');
+                                
+                                // Fix: Add the user on-the-fly if missing
+                                self.users.push({
+                                    id: account.id,
+                                    email: account.email,
+                                    password: 'password', // Default password
+                                    role: account.role,
+                                    employeeId: account.id
+                                });
+                                console.log('🔧 Created missing user for account:', account.email);
+                            }
+                        } else {
+                            console.log('⚠️ ERROR: No account found for token ID:', decodedPayload.id);
+                            console.log('Available accounts:', accounts.map(a => ({id: a.id, email: a.email, role: a.role})));
+                        }
+                    } else {
+                        console.log('⚠️ ERROR: Token does not start with "fake-jwt-token."');
+                    }
+                } catch (e) {
+                    console.error('⚠️ ERROR: Error processing token:', e);
+                }
+            } else {
+                console.log('⚠️ ERROR: Invalid Authorization header format');
+            }
+            
+            console.log('Trying to authorize with Admin role...');
+            return authorize(Role.Admin, () => {
+                console.log('✅ Authorization successful! Creating department...');
                 const department = { id: self.departments.length + 1, ...body, employeeCount: 0 };
                 self.departments.push(department);
+                console.log('Department created successfully:', department);
+                console.log('=======================================================');
+                console.log('CREATE DEPARTMENT DEBUG - END');
+                console.log('=======================================================');
                 return ok(department);
             });
         }
         
         function updateDepartment() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/').pop()!);
                 const deptIndex = self.departments.findIndex(d => d.id === id);
                 if (deptIndex === -1) return error('Department not found');
@@ -216,7 +414,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function deleteDepartment() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/').pop()!);
                 self.departments = self.departments.filter(d => d.id !== id);
                 return ok({ message: 'Department deleted' });
@@ -226,13 +424,26 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         function getEmployeeWorkflows() {
             return authorize(null, () => {
                 const employeeId = parseInt(url.split('/').pop()!);
-                const workflows = self.workflows.filter(w => w.employeeId === employeeId);
+                console.log(`Fake backend: Getting workflows for employee ID ${employeeId}`);
+                
+                let workflows = self.workflows.filter(w => w.employeeId === employeeId);
+                
+                // Enhance workflows with additional properties
+                workflows = workflows.map(workflow => ({
+                    ...workflow,
+                    createdDate: new Date().toISOString(),
+                    updatedDate: new Date().toISOString(),
+                    type: workflow.type || 'Unknown',
+                    status: workflow.status || 'Pending'
+                }));
+                
+                console.log(`Fake backend: Found ${workflows.length} workflows:`, workflows);
                 return ok(workflows);
             });
         }
         
         function createWorkflow() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const workflow = { id: self.workflows.length + 1, ...body };
                 self.workflows.push(workflow);
                 return ok(workflow);
@@ -240,7 +451,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function getRequests() {
-            return authorize('Admin', () => ok(self.requests));
+            return authorize(Role.Admin, () => ok(self.requests));
         }
         
         function createRequest() {
@@ -257,7 +468,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function updateRequest() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/').pop()!);
                 const reqIndex = self.requests.findIndex(r => r.id === id);
                 if (reqIndex === -1) return error('Request not found');
@@ -267,7 +478,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
         
         function deleteRequest() {
-            return authorize('Admin', () => {
+            return authorize(Role.Admin, () => {
                 const id = parseInt(url.split('/').pop()!);
                 self.requests = self.requests.filter(r => r.id !== id);
                 return ok({ message: 'Request deleted' });
@@ -278,27 +489,38 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         function authenticate() {
             const { email, password } = body;
             
+            console.log(`Authentication attempt for email: ${email}`);
+            
             // First, find the account by email and password
             const account = accounts.find(x => x.email === email && x.password === password);
             
             // Check if account exists and is verified
             if (!account || !account.isVerified) {
+                console.log(`Authentication failed: Account not found or not verified for email: ${email}`);
                 return error('Email or password is incorrect');
             }
             
             // Check if the account is active for non-admin users
             if (account.role !== Role.Admin && account.isActive === false) {
+                console.log(`Authentication failed: Account is deactivated for email: ${email}`);
                 return error('Your account has been deactivated. Please contact an administrator.');
             }
             
             // Authentication successful - proceed with token generation
+            console.log(`Authentication successful for: ${email}, role: ${account.role}`);
             account.refreshTokens = account.refreshTokens || [];
             account.refreshTokens.push(generateRefreshToken());
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
             
+            const token = generateJwtToken(account);
+            console.log(`Generated token for ${email}: ${token}`);
+            
+            // After successful authentication, make sure users are in sync
+            self.syncUsersWithAccounts();
+            
             return ok({
                 ...basicDetails(account),
-                jwtToken: generateJwtToken(account)
+                jwtToken: token
             });
         }
 
@@ -369,6 +591,9 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             delete account.confirmPassword;
             accounts.push(account);
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
+
+            // Update our users array to stay in sync
+            self.syncUsersWithAccounts();
 
             // display verification email in alert
             setTimeout(() => {
@@ -441,14 +666,13 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             );
 
             if (!account) return error('Invalid token');
-
-            // update password and remove reset token
+              // update password and remove reset token
             account.password = password;
             account.isVerified = true;
             delete account.resetToken;
             delete account.resetTokenExpires;
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
-
+            
             return ok();
         }
 
@@ -476,7 +700,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             if (body.isActive === undefined) {
                 body.isActive = true;
             }
-            if (body.role === 'Admin') {
+            if (body.role === Role.Admin) {
                 body.isActive = true;
             }
             
@@ -494,6 +718,9 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             accounts.push(account);
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
 
+            // Update our users array to stay in sync
+            self.syncUsersWithAccounts();
+
             return ok();
         }
 
@@ -501,9 +728,7 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             if (!isAuthenticated()) return unauthorized();
 
             let params = body;
-            let account = accounts.find(x => x.id === idFromUrl());
-
-            // user accounts can update own profile and admin accounts can update all profiles
+            let account = accounts.find(x => x.id === idFromUrl());            // user accounts can update own profile and admin accounts can update all profiles
             if (account.id !== currentAccount().id && !isAuthorized(Role.Admin)) {
                 return unauthorized();
             }
@@ -519,6 +744,9 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             // update and save account
             Object.assign(account, params);
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
+
+            // Update our users array to stay in sync
+            self.syncUsersWithAccounts();
 
             return ok(basicDetails(account));
         }
@@ -536,6 +764,9 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             // delete account then save
             accounts = accounts.filter(x => x.id !== idFromUrl());
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
+
+            // Update our users array to stay in sync
+            self.syncUsersWithAccounts();
 
             return ok();
         }
@@ -568,6 +799,9 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             // Save the updated accounts to localStorage
             localStorage.setItem(accountsKey, JSON.stringify(accounts));
             
+            // Update our users array to stay in sync
+            self.syncUsersWithAccounts();
+            
             // Return the updated account details
             return ok({
                 ...basicDetails(account)
@@ -597,19 +831,108 @@ export class FakeBackendInterceptor implements HttpInterceptor {
         }
 
         function authorize(requiredRole, callback) {
+            console.log(`FAKE BACKEND - Authorize function called with requiredRole: ${requiredRole || 'none'}`);
+            console.log(`FAKE BACKEND - Current URL: ${url}, Method: ${method}`);
+            
             const user = getUser();
-            if (!user) return unauthorized();
-            if (requiredRole && user.role !== requiredRole) return error('Forbidden');
+            console.log(`FAKE BACKEND - User from getUser():`, user);
+            
+            if (!user) {
+                console.error('FAKE BACKEND - Authorization failed: No user found from token');
+                return unauthorized();
+            }
+            
+            if (requiredRole && user.role !== requiredRole) {
+                console.error(`FAKE BACKEND - Authorization failed: User role ${user.role} does not match required role ${requiredRole}`);
+                return error('Forbidden');
+            }
+            
+            console.log(`FAKE BACKEND - User authorized: ${user.email}, role: ${user.role}`);
             return callback();
         }
 
         function getUser() {
             const authHeader = headers.get('Authorization');
-            if (!authHeader || authHeader !== 'Bearer fake-jwt-token') return null;
+            console.log('FAKE BACKEND - Auth header:', authHeader ? `${authHeader.substring(0, 15)}...` : 'none');
             
-            // Since we're using a fake token, just return the first user that matches the role
-            // In a real implementation, we would decode the token and find the user by ID
-            return self.users.find(u => u.email === 'admin@example.com'); // Default to admin user for simplicity
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                console.log('FAKE BACKEND - Missing or invalid Authorization header');
+                return null;
+            }
+            
+            // Extract the token
+            const token = authHeader.substring(7);
+            console.log('FAKE BACKEND - Token:', token.substring(0, 15) + '...');
+            
+            try {
+                // First, check for our specific fake-jwt-token format
+                if (token.startsWith('fake-jwt-token.')) {
+                    try {
+                        // This matches our generateJwtToken function format
+                        const payload = token.split('.')[1];
+                        const decodedPayload = JSON.parse(atob(payload));
+                        console.log('FAKE BACKEND - Decoded payload:', decodedPayload);
+                        
+                        // Verify token hasn't expired
+                        const tokenExpired = Date.now() > (decodedPayload.exp * 1000);
+                        console.log('FAKE BACKEND - Token expired:', tokenExpired);
+                        if (tokenExpired) {
+                            console.log('Token expired');
+                            return null;
+                        }
+                        
+                        // Get account from token
+                        console.log('FAKE BACKEND - Looking for account with ID:', decodedPayload.id);
+                        console.log('FAKE BACKEND - Available accounts:', accounts.map(a => ({id: a.id, email: a.email, role: a.role})));
+                        const account = accounts.find(x => x.id === decodedPayload.id);
+                        
+                        if (account) {
+                            console.log('FAKE BACKEND - Found account:', { id: account.id, email: account.email, role: account.role });
+                            // Find and return matching user
+                            console.log('FAKE BACKEND - Available users:', self.users);
+                            const user = self.users.find(u => u.email === account.email);
+                            
+                            if (user) {
+                                console.log(`FAKE BACKEND - Found user by token: ${user.email}, role: ${user.role}`);
+                                return user;
+                            } else {
+                                console.log(`FAKE BACKEND - No matching user found for account email: ${account.email}`);
+                                
+                                // Create a user on-the-fly
+                                const newUser = {
+                                    id: account.id,
+                                    email: account.email,
+                                    password: account.password || 'password',
+                                    role: account.role,
+                                    employeeId: account.id
+                                };
+                                self.users.push(newUser);
+                                console.log(`FAKE BACKEND - Created missing user: ${newUser.email}, role: ${newUser.role}`);
+                                return newUser;
+                            }
+                        } else {
+                            console.log(`FAKE BACKEND - No account found for ID: ${decodedPayload.id}`);
+                        }
+                    } catch (e) {
+                        console.error('FAKE BACKEND - Error decoding JWT payload:', e);
+                    }
+                } else {
+                    console.log('FAKE BACKEND - Not a fake-jwt-token format');
+                }
+                
+                // Fallback: For any token that looks like JWT but doesn't match our format
+                if (token && token.split('.').length === 3) {
+                    console.log('FAKE BACKEND - Using fallback authentication for non-standard JWT');
+                    const adminUser = self.users.find(u => u.role === Role.Admin);
+                    console.log('FAKE BACKEND - Fallback user:', adminUser || self.users[0]);
+                    return adminUser || self.users[0];
+                }
+            } catch (error) {
+                console.error('FAKE BACKEND - Error processing token:', error);
+            }
+            
+            console.log('FAKE BACKEND - No user found from token');
+            return null;
         }
 
         function basicDetails(account) {
@@ -638,14 +961,22 @@ export class FakeBackendInterceptor implements HttpInterceptor {
 
         function currentAccount() {
             const authHeader = headers.get('Authorization');
-            if (!authHeader.startsWith('Bearer fake-jwt-token')) return;
+            if (!authHeader || !authHeader.startsWith('Bearer fake-jwt-token')) return;
 
-            const jwtToken = JSON.parse(atob(authHeader.split('.')[1]));
-            const tokenExpired = Date.now() > (jwtToken.exp * 1000);
-            if (tokenExpired) return;
+            try {
+                const jwtToken = JSON.parse(atob(authHeader.split('.')[1]));
+                const tokenExpired = Date.now() > (jwtToken.exp * 1000);
+                if (tokenExpired) {
+                    console.log('Token expired');
+                    return;
+                }
 
-            const account = accounts.find(x => x.id === jwtToken.id);
-            return account;
+                const account = accounts.find(x => x.id === jwtToken.id);
+                return account;
+            } catch (error) {
+                console.error('Error parsing JWT token:', error);
+                return;
+            }
         }
 
         function generateJwtToken(account) {
@@ -662,29 +993,44 @@ export class FakeBackendInterceptor implements HttpInterceptor {
             document.cookie = `fakeRefreshToken=${token}; expires=${expires}; path=/`;
             return token;
         }
+        
+        // Diagnostic helper function to check user and role
+        function logAuthStatus(endpoint) {
+            console.log(`\n==========================================`);
+            console.log(`AUTH STATUS CHECK for endpoint: ${endpoint}`);
+            console.log(`------------------------------------------`);
+            const authHeader = headers.get('Authorization');
+            console.log(`Authorization header present: ${!!authHeader}`);
+            
+            if (authHeader) {
+                console.log(`Header starts with Bearer: ${authHeader.startsWith('Bearer ')}`);
+                const token = authHeader.substring(7);
+                console.log(`Token preview: ${token.substring(0, 15)}...`);
+                
+                try {
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        const decoded = JSON.parse(atob(parts[1]));
+                        console.log(`Token payload:`, decoded);
+                        console.log(`Token expiration: ${new Date(decoded.exp * 1000).toISOString()}`);
+                        console.log(`Token expired: ${new Date(decoded.exp * 1000) < new Date()}`);
+                        
+                        const account = accounts.find(x => x.id === decoded.id);
+                        console.log(`Account found: ${!!account}`);
+                        if (account) {
+                            console.log(`Account details: ID=${account.id}, Email=${account.email}, Role=${account.role}`);
+                            console.log(`Is Admin: ${account.role === Role.Admin}`);
+                        }
+                    }
+                } catch (e) {
+                    console.log(`Error decoding token: ${e.message}`);
+                }
+            }
+            console.log(`==========================================\n`);
+        }
 
         function getRefreshToken() {
             return (document.cookie.split(';').find(x => x.includes('fakeRefreshToken')) || '=').split('=')[1];
-        }
-
-        function ensureAdminAccountsActive() {
-            const accountsData = localStorage.getItem(accountsKey);
-            if (accountsData) {
-                const allAccounts = JSON.parse(accountsData);
-                let needsUpdate = false;
-                
-                // Make sure all admin accounts are active
-                allAccounts.forEach(account => {
-                    if (account.role === 'Admin' && account.isActive === false) {
-                        account.isActive = true;
-                        needsUpdate = true;
-                    }
-                });
-                
-                if (needsUpdate) {
-                    localStorage.setItem(accountsKey, JSON.stringify(allAccounts));
-                }
-            }
         }
     }
 }

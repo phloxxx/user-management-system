@@ -4,10 +4,11 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 
 // used to create fake backend
-// import { FakeBackendInterceptor, fakeBackendProvider } from './_helpers';
+import { FakeBackendInterceptor, fakeBackendProvider } from './_helpers';
 
 import { AppRoutingModule } from './app-routing.module';
-import { JwtInterceptor, ErrorInterceptor, appInitializer } from './_helpers';
+import { JwtInterceptor, ErrorInterceptor, RetryInterceptor, appInitializer } from './_helpers';
+import { DebugInterceptor } from './_helpers/debug.interceptor';
 import { AccountService } from './_services';
 import { AppComponent } from './app.component';
 import { AlertComponent } from './_components';
@@ -24,13 +25,14 @@ import { HomeComponent } from './home';
         AppComponent,
         AlertComponent,
         HomeComponent
-    ],
-    providers: [
+    ],    providers: [
         { provide: APP_INITIALIZER, useFactory: appInitializer, multi: true, deps: [AccountService] },
+        { provide: HTTP_INTERCEPTORS, useClass: DebugInterceptor, multi: true },
         { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
         { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
-        // Commented out fake backend provider to use real API instead
-        // { provide: HTTP_INTERCEPTORS, useClass: FakeBackendInterceptor, multi: true },
+        { provide: HTTP_INTERCEPTORS, useClass: RetryInterceptor, multi: true },
+        // Fake backend provider for frontend testing
+        { provide: HTTP_INTERCEPTORS, useClass: FakeBackendInterceptor, multi: true },
     ],
     bootstrap: [AppComponent]
 })

@@ -1,0 +1,89 @@
+<div class="card">
+    <div class="card-header bg-light">
+        <h4 class="mb-0">{{id ? 'EDIT' : 'ADD'}} EMPLOYEE</h4>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger" *ngIf="errorMessage">{{errorMessage}}</div>
+        
+        <div class="mb-3">
+            <label class="form-label">Employee ID</label>
+            <input type="text" class="form-control" [(ngModel)]="employee.employeeId" 
+                   [disabled]="!!id || !isAdmin()" 
+                   [title]="!isAdmin() ? 'Only admins can change employee IDs' : ''">
+            <small class="form-text text-muted" *ngIf="!id">
+                Automatically generated. Admin users can modify if needed.
+            </small>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label d-block">Account</label>
+            <select class="form-select form-control" [(ngModel)]="employee.userId">
+                <option [ngValue]="null">-- Select Account --</option>
+                <option *ngFor="let user of availableUsers" [value]="user.id">
+                    {{user.email}} ({{user.role}})
+                    <ng-container *ngIf="user.isActive === false"> [INACTIVE]</ng-container>
+                </option>
+            </select>
+            <small class="form-text text-muted">
+                Only active and unassigned accounts are available for selection.
+            </small>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Position</label>
+            <input type="text" class="form-control" [(ngModel)]="employee.position" placeholder="Enter position">
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label d-block">Department</label>
+            <select class="form-select form-control" [(ngModel)]="employee.departmentId">
+                <option *ngFor="let dept of departments" [value]="dept.id">{{dept.name}}</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Hire Date</label>
+            <input type="date" class="form-control" [(ngModel)]="employee.hireDate">
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label d-block">Status</label>
+            <select class="form-select form-control" [(ngModel)]="employee.status">
+                <option>Active</option>
+                <option>Inactive</option>
+            </select>
+        </div>
+        
+        <div class="text-center mt-4">
+            <button class="btn btn-primary" (click)="save()">Save</button>
+            <span style="display: inline-block; width: 10px;"></span>
+            <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-select, .form-control {
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        border: 1px solid #ced4da;
+        background-color: #fff;
+        height: 38px;
+        width: 100%;
+    }
+    
+    .form-select {
+        appearance: auto;
+        -webkit-appearance: auto;
+    }
+    
+    .card-header {
+        border-bottom: 1px solid rgba(0,0,0,.125);
+    }
+</style>
