@@ -3,12 +3,23 @@
   "version": "1.0.0",
   "description": "Integrated User Management System",
   "scripts": {
-    "install:frontend": "cd angular-signup-verification-boilerplate && npm install",
-    "install:backend": "cd node-mysql-boilerplate-api && npm install",
-    "install:all": "npm run install:frontend && npm run install:backend",
+    "install:frontend": "cd angular-signup-verification-boilerplate && npm install && cd ..",
+    "install:backend": "cd node-mysql-boilerplate-api && npm install && cd ..",
+    "install:all": "npm install && npm run install:frontend && npm run install:backend",
     "start:frontend": "cd angular-signup-verification-boilerplate && npm start",
     "start:backend": "cd node-mysql-boilerplate-api && npm start",
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "build:frontend": "cd angular-signup-verification-boilerplate && npm run build",
+    "build:backend": "cd node-mysql-boilerplate-api && npm run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test:frontend": "cd angular-signup-verification-boilerplate && npm test",
+    "test:backend": "cd node-mysql-boilerplate-api && npm test",
+    "test": "concurrently \"npm run test:backend\" \"npm run test:frontend\"",
+    "lint:frontend": "cd angular-signup-verification-boilerplate && npm run lint",
+    "lint:backend": "cd node-mysql-boilerplate-api && npm run lint",
+    "lint": "concurrently \"npm run lint:backend\" \"npm run lint:frontend\"",
+    "clean": "rimraf node_modules && cd angular-signup-verification-boilerplate && rimraf node_modules && cd ../node-mysql-boilerplate-api && rimraf node_modules && cd ..",
+    "clean:install": "npm run clean && npm run install:all"
   },
   "dependencies": {
     "concurrently": "^8.2.0",
@@ -17,5 +28,11 @@
     "express": "^5.1.0",
     "joi": "^17.13.3",
     "rootpath": "^0.1.2"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.5",
+    "cross-env": "^7.0.3",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2"
   }
 }

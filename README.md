@@ -1,36 +1,113 @@
 # User Management System
 
-##  Introduction
-A full-stack application for managing user accounts with features like email sign-up, verification, authentication, role-based authorization, and CRUD operations.
+A full-stack user management system with Angular frontend and Node.js backend.
+
+## Features
+
+- User registration and email verification
+- User authentication and authorization
+- Password reset functionality
+- User profile management
+- Secure API endpoints
+- Modern Angular frontend
+- RESTful Node.js backend
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- MySQL (v8 or higher)
+- Angular CLI (v17 or higher)
+
+## Project Structure
+
+```
+user-management-system/
+├── angular-signup-verification-boilerplate/  # Frontend
+├── node-mysql-boilerplate-api/              # Backend
+├── package.json                             # Root package.json
+└── README.md
+```
 
 ## Installation
-Follow these steps to set up project locally.
 
-### 1. Clone the repository. 
-
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd user-management-system
 ```
-git clone https://github.com/phloxxx/user-management-system.git
-```
 
-### 2. Install dependencies:
+2. Install dependencies:
+```bash
+# Install all dependencies (frontend + backend)
+npm run install:all
 
-```
-npm install
-npm run install:backend
+# Or install separately
 npm run install:frontend
+npm run install:backend
 ```
 
-### 3. Start the backend server:
+3. Set up environment variables:
+- Copy `.env.example` to `.env`
+- Update the values in `.env` with your configuration
 
-```
-npm start
-```
+4. Set up the database:
+- Create a MySQL database
+- Update the database configuration in `.env`
 
-### 4. Start the Angular app:
+## Available Scripts
 
-```
-ng serve
-```
+### Development
+- `npm start` - Start both frontend and backend in development mode
+- `npm run start:frontend` - Start frontend only
+- `npm run start:backend` - Start backend only
+
+### Building
+- `npm run build` - Build both frontend and backend
+- `npm run build:frontend` - Build frontend only
+- `npm run build:backend` - Build backend only
+
+### Testing
+- `npm test` - Run tests for both frontend and backend
+- `npm run test:frontend` - Run frontend tests
+- `npm run test:backend` - Run backend tests
+
+### Linting
+- `npm run lint` - Run linting for both frontend and backend
+- `npm run lint:frontend` - Run frontend linting
+- `npm run lint:backend` - Run backend linting
+
+### Maintenance
+- `npm run clean` - Remove all node_modules directories
+- `npm run clean:install` - Clean and reinstall all dependencies
+
+## Development
+
+### Frontend
+- Built with Angular 17
+- Uses Angular Material for UI components
+- Implements reactive forms
+- Follows Angular best practices
+
+### Backend
+- Built with Node.js and Express
+- Uses MySQL with Sequelize ORM
+- Implements JWT authentication
+- Follows REST API best practices
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Introduction
+A full-stack application for managing user accounts with features like email sign-up, verification, authentication, role-based authorization, and CRUD operations.
 
 ## Usage
 * Register a new account at */accounts/register*.
