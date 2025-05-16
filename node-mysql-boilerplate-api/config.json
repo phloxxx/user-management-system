@@ -1,10 +1,9 @@
 {
     "database": {
       "host": "localhost",
-      "port": 3306,
-      "user": "root",
-      "password": "escprtscr_I3",
-      "database": "node-mysql-signup-verification-api"
+      "user": "u875409848_ocliasa",
+      "password": "9T2Z5$3UKkgSYzE",
+      "database": "u875409848_ocliasa"
     },
     "secret": "THIS IS USED TO SIGN AND VERIFY JWT TOKENS, REPLACE IT WITH YOUR OWN SECRET, IT CAN BE ANY STRING",
     "emailFrom": "info@node-mysql-signup-verification-api.com",
@@ -12,8 +11,8 @@
       "host": "smtp.ethereal.email",
       "port": 587,
       "auth": {
-        "user": "wiley90@ethereal.email",
-        "pass": "ctusr9FpPn8ywYhnej"
+        "user": "merlin.koss@ethereal.email",
+        "pass": "SB5ZhzfXyVgF5Hvk3F"
       }
     }
   }
