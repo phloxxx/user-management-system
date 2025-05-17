@@ -11,7 +11,6 @@
     "start:backend": "cd node-mysql-boilerplate-api && npm start",
     "start": "node node-mysql-boilerplate-api/server.js",
     "start:dev": "nodemon node-mysql-boilerplate-api/server.js",
-    "create-public": "mkdir -p node-mysql-boilerplate-api/public",
     "dev": "nodemon node-mysql-boilerplate-api/server.js",
     "build": "npm run build:backend && npm run build:frontend && npm run copy:dist",
     "build:backend": "cd node-mysql-boilerplate-api && npm install",
