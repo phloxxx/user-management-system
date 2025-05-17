@@ -6,17 +6,10 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
 
-// allow CORS requests from any origin
+
 app.use(cors({
-  origin: [
-    'http://localhost:4200',
-    'https://real-user-management-system.onrender.com',
-    'https://real-user-management-system.onrender.com:4200',
-    'https://user-management-system-app.onrender.com'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  origin: 'http://localhost:4200', // Angular app URL
+  credentials: true
 }));
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -46,21 +39,6 @@ app.use((req, res, next) => {
         console.log(`[${req.method}] ${req.url} - Request body:`, JSON.stringify(req.body));
     }
     next();
-});
-
-// Root route - serve API info
-app.get('/', (req, res) => {
-    res.json({
-        message: 'User Management System API',
-        version: '1.0.0',
-        endpoints: [
-            '/accounts - User accounts',
-            '/departments - Departments',
-            '/employees - Employees',
-            '/workflows - Workflows',
-            '/requests - Requests'
-        ]
-    });
 });
 
 // api routes
