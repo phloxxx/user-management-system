@@ -49,10 +49,11 @@ app.use((req, res, next) => {
 
 
 app.use('/accounts', require('./accounts/account.controller'));
-app.use('/departments', require('./departments/index'));
-app.use('/employees', require('./employees/index'));
-app.use('/workflows', require('./workflows/index'));
-app.use('/requests', require('./requests/index'));
+// Remove non-existent routes
+// app.use('/departments', require('./departments/index'));
+// app.use('/employees', require('./employees/index'));
+// app.use('/workflows', require('./workflows/index'));
+// app.use('/requests', require('./requests/index'));
 
 
 app.use('/api-docs', require('./_helpers/swagger'));
