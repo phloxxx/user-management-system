@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { map, finalize, catchError } from 'rxjs/operators';
+import { map, finalize } from 'rxjs/operators';
 
 import { environment } from '@environments/environment';
 import { Account } from '@app/_models';
@@ -10,6 +10,7 @@ import { Account } from '@app/_models';
 const baseUrl = `${environment.apiUrl}/accounts`;
 @Injectable({ providedIn: 'root' })
 export class AccountService {
+    [x: string]: any;
     private accountSubject: BehaviorSubject<Account>;
     public account: Observable<Account>;
 
@@ -26,11 +27,8 @@ export class AccountService {
     }
 
     login(email: string, password: string) {
-        console.log(`Attempting to login with email: ${email} to ${environment.apiUrl}/accounts/authenticate`);
-        return this.http.post<any>(`${baseUrl}/authenticate`, { email, password }, { withCredentials: true })
+        return this.http.post<any>(`${environment.apiUrl}/accounts/authenticate`, { email, password })
             .pipe(map(response => {
-                console.log('Login response:', response);
-                
                 // Check if non-admin account is active before allowing login
                 if (response.role !== 'Admin' && !response.isActive) {
                     throw new Error('Your account has been deactivated. Please contact an administrator.');
@@ -44,24 +42,15 @@ export class AccountService {
     }
 
     logout() {
-        this.http.post<any>(`${baseUrl}/revoke-token`, {}, { withCredentials: true })
-            .pipe(
-                catchError(error => {
-                    console.error('Error revoking token:', error);
-                    return [];
-                })
-            )
-            .subscribe();
+        this.http.post<any>(`${baseUrl}/revoke-token`, {}, { withCredentials: true }).subscribe();
         this.stopRefreshTokenTimer();
         this.accountSubject.next(null);
         this.router.navigate(['/account/login']);
     }
 
     refreshToken() {
-        console.log('Refreshing token...');
         return this.http.post<any>(`${baseUrl}/refresh-token`, {}, { withCredentials: true })
             .pipe(map(account => {
-                console.log('Refresh token response:', account);
                 this.accountSubject.next(account);
                 this.startRefreshTokenTimer();
                 return account;
@@ -137,15 +126,8 @@ export class AccountService {
 
     // helper methods
 
-    private refreshTokenTimeout;    
-    
-    private startRefreshTokenTimer() {
+    private refreshTokenTimeout;    private startRefreshTokenTimer() {
         try {
-            if (!this.accountValue || !this.accountValue.jwtToken) {
-                console.error('Cannot start refresh timer: No account or JWT token available');
-                return;
-            }
-
             // parse json object from base64 encoded jwt token
             const jwtToken = JSON.parse(atob(this.accountValue.jwtToken.split('.')[1]));
 
@@ -166,10 +148,7 @@ export class AccountService {
             } else {
                 // Token already expired, try to refresh immediately
                 console.log('Token already expired, refreshing immediately');
-                this.refreshToken().subscribe({
-                    next: () => console.log('Token refreshed successfully'),
-                    error: error => console.error('Token refresh failed:', error)
-                });
+                this.refreshToken().subscribe();
             }
         } catch (error) {
             console.error('Error starting token refresh timer:', error);

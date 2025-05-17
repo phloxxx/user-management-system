@@ -32,7 +32,7 @@ import { HomeComponent } from './home';
         { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
         { provide: HTTP_INTERCEPTORS, useClass: RetryInterceptor, multi: true },
         // Fake backend provider for frontend testing
-        { provide: HTTP_INTERCEPTORS, useClass: FakeBackendInterceptor, multi: true },
+        //{ provide: HTTP_INTERCEPTORS, useClass: FakeBackendInterceptor, multi: true },
     ],
     bootstrap: [AppComponent]
 })
