@@ -14,8 +14,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Serve static files from the Angular app
-app.use(express.static(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate')));
+// Serve static files from Angular app
+const angularDistPath = path.join(__dirname, 'public');
+app.use(express.static(angularDistPath));
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -47,7 +48,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// API routes
+// API routes with /api prefix
 app.use('/api/accounts', require('./accounts/account.controller'));
 app.use('/api/departments', require('./departments/index'));
 app.use('/api/employees', require('./employees/index'));
@@ -58,9 +59,9 @@ app.use('/api-docs', swaggerDocs);
 // Error handler
 app.use(errorHandler);
 
-// Catch all other routes and return the Angular app
+// All other routes should return the Angular app
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/index.html'));
+    res.sendFile(path.join(angularDistPath, 'index.html'));
 });
 
 // global error handler
