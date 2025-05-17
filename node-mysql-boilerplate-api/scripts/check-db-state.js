@@ -1,4 +1,4 @@
-const config = require('../config.json');
+const config = require('../config'); 
 const mysql = require('mysql2/promise');
 
 async function checkDatabaseState() {
