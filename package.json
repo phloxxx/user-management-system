@@ -11,7 +11,10 @@
     "start:backend": "cd node-mysql-boilerplate-api && npm start",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "start:server": "node node-mysql-boilerplate-api/server.js",
-    "dev": "nodemon node-mysql-boilerplate-api/server.js"
+    "dev": "nodemon node-mysql-boilerplate-api/server.js",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd node-mysql-boilerplate-api && npm install",
+    "build:frontend": "cd angular-signup-verification-boilerplate && npm install && ng build --prod"
   },
   "dependencies": {
     "concurrently": "^8.2.0",
@@ -22,6 +25,6 @@
     "rootpath": "^0.1.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.13.1"
   }
 }
