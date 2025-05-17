@@ -7,23 +7,11 @@ const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
 const path = require('path');
 
-// CORS configuration
-app.use(cors());
-
-// Parse JSON bodies
-app.use(bodyParser.json());
+// Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 app.use(cookieParser());
-
-// Log API requests
-app.use((req, res, next) => {
-    console.log(`API Request: ${JSON.stringify({
-        method: req.method,
-        path: req.path,
-        ip: req.ip
-    })}`);
-    next();
-});
+app.use(cors());
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
