@@ -15,6 +15,7 @@
     "build": "npm run build:backend && npm run build:frontend && npm run copy:dist",
     "build:backend": "cd node-mysql-boilerplate-api && npm install",
     "build:frontend": "cd angular-signup-verification-boilerplate && npm install && ng build --configuration=production",
+    "copy:dist": "xcopy .\\angular-signup-verification-boilerplate\\dist\\angular-signup-verification-boilerplate .\\node-mysql-boilerplate-api\\public\\ /E /I /Y",
     "postinstall": "npm run build"
   },
   "dependencies": {
