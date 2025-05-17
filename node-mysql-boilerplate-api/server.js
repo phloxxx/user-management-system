@@ -5,10 +5,11 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
+const path = require('path');
 
-
+// CORS configuration - updated to include both local and production URLs
 app.use(cors({
-  origin: 'http://localhost:4200', // Angular app URL
+  origin: ['http://localhost:4200', 'https://real-user-management-system.onrender.com'],
   credentials: true
 }));
 
@@ -41,17 +42,50 @@ app.use((req, res, next) => {
     next();
 });
 
-// api routes
+// API routes
 app.use('/accounts', require('./accounts/account.controller'));
 app.use('/departments', require('./departments/index'));
 app.use('/employees', require('./employees/index'));
 app.use('/workflows', require('./workflows/index'));
-app.use('/requests', require('./requests/index'));  // Make sure this is added
+app.use('/requests', require('./requests/index'));
 
-// swagger docs route
+// Swagger docs route
 app.use('/api-docs', require('./_helpers/swagger'));
 
-// global error handler
+// Root path handler - redirect to login page
+app.get('/', (req, res) => {
+  res.redirect('/accounts/login');
+});
+
+// Handle login path
+app.get('/accounts/login', (req, res) => {
+  // If you're serving frontend files:
+  // res.sendFile(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/index.html'));
+  
+  // For API-only backend:
+  res.json({ 
+    message: 'Welcome to the User Management System API', 
+    endpoints: {
+      login: '/accounts/authenticate',
+      register: '/accounts/register',
+      documentation: '/api-docs'
+    }
+  });
+});
+
+// Serve static Angular files if they exist
+// Uncomment if you have a production build of the Angular app available
+// const angularBuildPath = path.join(__dirname, '../angular-signup-verification-boilerplate/dist');
+// if (fs.existsSync(angularBuildPath)) {
+//   app.use(express.static(angularBuildPath));
+//   
+//   // Catch-all route to serve the Angular app for client-side routing
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(angularBuildPath, 'index.html'));
+//   });
+// }
+
+// Global error handler
 app.use((err, req, res, next) => {
     console.error('Global error handler caught:', err);
     
@@ -103,6 +137,6 @@ app.use((err, req, res, next) => {
     }
 });
 
-// start server
+// Start server
 const port = process.env.NODE_ENV === 'production' ? (process.env.PORT || 80) : 4000;
 app.listen(port, () => console.log('Server listening on port ' + port));
