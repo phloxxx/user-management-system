@@ -6,13 +6,10 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
 const path = require('path'); // Add this for path operations
-const fs = require('fs'); // Add this for file system operations
+
 
 app.use(cors({
-  origin: [
-    'http://localhost:4200',
-    'https://real-user-management-system.onrender.com'
-  ], // Allow both local and deployed URLs
+  origin: 'http://localhost:4200', // Angular app URL
   credentials: true
 }));
 
@@ -55,65 +52,13 @@ app.use('/requests', require('./requests/index'));  // Make sure this is added
 // swagger docs route
 app.use('/api-docs', require('./_helpers/swagger'));
 
-// Serve static files from the Angular app if they exist
-const angularDistPath = path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate');
-const fallbackPath = path.join(__dirname, './public'); // Create a basic public folder for fallback
+// Serve static files from the Angular app
+app.use(express.static(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate')));
 
-// Check if the Angular dist directory exists
-if (fs.existsSync(angularDistPath)) {
-  console.log('Angular dist folder found, serving frontend from there');
-  app.use(express.static(angularDistPath));
-  
-  // Catch-all route for Angular client-side routing
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(angularDistPath, 'index.html'));
-  });
-} else {
-  console.log('Angular dist folder not found, serving API only or from fallback location');
-  
-  // Make sure we have a public directory with a basic index.html
-  if (!fs.existsSync(fallbackPath)) {
-    fs.mkdirSync(fallbackPath, { recursive: true });
-    
-    const basicHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>User Management API</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-            h1 { color: #333; }
-            .container { max-width: 800px; margin: 0 auto; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>User Management API</h1>
-            <p>The API is running. Frontend is not available in this deployment.</p>
-            <p>API endpoints are available at:</p>
-            <ul>
-              <li><a href="/accounts">/accounts</a></li>
-              <li><a href="/departments">/departments</a></li>
-              <li><a href="/employees">/employees</a></li>
-              <li><a href="/workflows">/workflows</a></li>
-              <li><a href="/requests">/requests</a></li>
-              <li><a href="/api-docs">/api-docs</a> (Swagger Documentation)</li>
-            </ul>
-          </div>
-        </body>
-      </html>
-    `;
-    
-    fs.writeFileSync(path.join(fallbackPath, 'index.html'), basicHtml);
-  }
-  
-  app.use(express.static(fallbackPath));
-  
-  // Fallback route for the API-only version
-  app.get('/', (req, res) => {
-    res.sendFile(path.join(fallbackPath, 'index.html'));
-  });
-}
+// For any request that doesn't match an API route, send the index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/index.html'));
+});
 
 // global error handler
 app.use((err, req, res, next) => {
