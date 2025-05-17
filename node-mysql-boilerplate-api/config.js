@@ -4,7 +4,10 @@ module.exports = {
         port: parseInt(process.env.DB_PORT || '3306'),
         user: process.env.DB_USER || 'u875409848_ocliasa',
         password: process.env.DB_PASSWORD || '9T2Z5$3UKkgSYzE',
-        database: process.env.DB_NAME || 'u875409848_ocliasa'
+        database: process.env.DB_NAME || 'u875409848_ocliasa',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
     },
     secret: process.env.JWT_SECRET || "THIS IS USED TO SIGN AND VERIFY JWT TOKENS, REPLACE IT WITH YOUR OWN SECRET, IT CAN BE ANY STRING",
     emailFrom: process.env.EMAIL_FROM || "info@node-mysql-signup-verification-api.com",

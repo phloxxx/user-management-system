@@ -6,12 +6,16 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
 const swaggerDocs = require('./_helpers/swagger');
+const path = require('path');
 
 // CORS configuration
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:4200',
     credentials: true
 }));
+
+// Serve static files from the Angular app
+app.use(express.static(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate')));
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -43,16 +47,21 @@ app.use((req, res, next) => {
     next();
 });
 
-// Routes
-app.use('/accounts', require('./accounts/account.controller'));
-app.use('/departments', require('./departments/index'));
-app.use('/employees', require('./employees/index'));
-app.use('/workflows', require('./workflows/index'));
-app.use('/requests', require('./requests/index'));
+// API routes
+app.use('/api/accounts', require('./accounts/account.controller'));
+app.use('/api/departments', require('./departments/index'));
+app.use('/api/employees', require('./employees/index'));
+app.use('/api/workflows', require('./workflows/index'));
+app.use('/api/requests', require('./requests/index'));
 app.use('/api-docs', swaggerDocs);
 
 // Error handler
 app.use(errorHandler);
+
+// Catch all other routes and return the Angular app
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/index.html'));
+});
 
 // global error handler
 app.use((err, req, res, next) => {
