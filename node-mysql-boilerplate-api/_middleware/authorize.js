@@ -1,6 +1,4 @@
 const { expressjwt } = require('express-jwt');
-const path = require('path');
-const config = require(path.join(__dirname, '..', 'config.json'));
 const db = require('../_helpers/db');
 
 module.exports = authorize;
@@ -19,17 +17,21 @@ function authorize(roles = []) {
 
         // authorize based on user role
         async (req, res, next) => {
-            const account = await db.Account.findByPk(req.auth.id);
-            if (!account || (roles.length && !roles.includes(account.role))) {
-                // account no longer exists or role not authorized
-                return res.status(401).json({ message: 'Unauthorized' });
-            }
+            try {
+                const account = await db.Account.findByPk(req.auth.id);
+                
+                if (!account || (roles.length && !roles.includes(account.role))) {
+                    return res.status(401).json({ message: 'Unauthorized' });
+                }
 
-            // authentication and authorization successful
-            req.user = account;
-            const refreshTokens = await account.getRefreshTokens();
-            req.user.ownsToken = token => !!refreshTokens.find(x => x.token === token);
-            next();
+                // authentication and authorization successful
+                req.user = account.get();
+                const refreshTokens = await account.getRefreshTokens();
+                req.user.ownsToken = token => !!refreshTokens.find(x => x.token === token);
+                next();
+            } catch (error) {
+                next(error);
+            }
         }
     ];
 }
