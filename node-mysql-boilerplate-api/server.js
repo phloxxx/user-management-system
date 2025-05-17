@@ -7,13 +7,13 @@ const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
 const swaggerDocs = require('./_helpers/swagger');
 
-
+// CORS configuration
 app.use(cors({
-  origin: 'http://localhost:4200', // Angular app URL
-  credentials: true
+    origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+    credentials: true
 }));
 
-
+// Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -43,15 +43,16 @@ app.use((req, res, next) => {
     next();
 });
 
-// api routes
+// Routes
 app.use('/accounts', require('./accounts/account.controller'));
 app.use('/departments', require('./departments/index'));
 app.use('/employees', require('./employees/index'));
 app.use('/workflows', require('./workflows/index'));
-app.use('/requests', require('./requests/index'));  // Make sure this is added
-
-// swagger docs route
+app.use('/requests', require('./requests/index'));
 app.use('/api-docs', swaggerDocs);
+
+// Error handler
+app.use(errorHandler);
 
 // global error handler
 app.use((err, req, res, next) => {
@@ -105,6 +106,14 @@ app.use((err, req, res, next) => {
     }
 });
 
-// start server
-const port = process.env.NODE_ENV === 'production' ? (process.env.PORT || 80) : 4000;
-app.listen(port, () => console.log('Server listening on port ' + port));
+
+// Start server
+const port = process.env.PORT || 10000;
+app.listen(port, () => {
+    console.log('Server listening on port ' + port);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (error) => {
+    console.error('Unhandled promise rejection:', error);
+});

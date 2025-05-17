@@ -1,6 +1,7 @@
 module.exports = {
-    database: {
+        database: {
         host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '3306'),
         user: process.env.DB_USER || 'u875409848_ocliasa',
         password: process.env.DB_PASSWORD || '9T2Z5$3UKkgSYzE',
         database: process.env.DB_NAME || 'u875409848_ocliasa'
