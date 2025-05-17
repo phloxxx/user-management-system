@@ -2,15 +2,7 @@ services:
   - type: web
     name: user-management-system
     env: node
-    buildCommand: |
-      npm install -g @angular/cli
-      npm install
-      cd node-mysql-boilerplate-api && npm install
-      cd ../angular-signup-verification-boilerplate
-      npm install
-      ng build --configuration=production
-      mkdir -p ../node-mysql-boilerplate-api/public
-      cp -r dist/angular-signup-verification-boilerplate/* ../node-mysql-boilerplate-api/public/
+    buildCommand: npm install -g @angular/cli && npm run build
     startCommand: node node-mysql-boilerplate-api/server.js
     envVars:
       - key: NODE_ENV
