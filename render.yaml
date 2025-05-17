@@ -5,14 +5,23 @@ services:
     buildCommand: |
       npm install -g @angular/cli
       npm install
-      cd node-mysql-boilerplate-api 
-      npm install
+      cd node-mysql-boilerplate-api && npm install
       cd ../angular-signup-verification-boilerplate
       npm install
       ng build --configuration=production
-    startCommand: npm start
+      mkdir -p ../node-mysql-boilerplate-api/public
+      cp -r dist/angular-signup-verification-boilerplate/* ../node-mysql-boilerplate-api/public/
+    startCommand: node node-mysql-boilerplate-api/server.js
     envVars:
-      - key: NODE_VERSION
-        value: 24.0.2
       - key: NODE_ENV
         value: production
+      - key: DB_HOST
+        value: 153.92.15.31
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        value: u875409848_ocliasa
+      - key: DB_PASSWORD
+        sync: false  # This will prompt you to set it in Render dashboard
+      - key: DB_NAME
+        value: u875409848_ocliasa
