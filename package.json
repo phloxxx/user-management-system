@@ -22,7 +22,10 @@
     "express-jwt": "^8.4.1",
     "joi": "^17.13.3",
     "mysql2": "^2.1.0",
-    "rootpath": "^0.1.2"
+    "rootpath": "^0.1.2",
+    "sequelize": "^6.3.4",
+    "swagger-ui-express": "^4.6.3",
+    "yamljs": "^0.3.0"
   },
   "engines": {
     "node": ">=18.0.0"
