@@ -5,7 +5,6 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
-const path = require('path'); // Add this for path operations
 
 
 app.use(cors({
@@ -51,14 +50,6 @@ app.use('/requests', require('./requests/index'));  // Make sure this is added
 
 // swagger docs route
 app.use('/api-docs', require('./_helpers/swagger'));
-
-// Serve static files from the Angular app
-app.use(express.static(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate')));
-
-// For any request that doesn't match an API route, send the index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/index.html'));
-});
 
 // global error handler
 app.use((err, req, res, next) => {
