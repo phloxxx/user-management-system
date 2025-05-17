@@ -1,14 +1,9 @@
 const express = require('express');
+const router = express.Router();
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
-const path = require('path');
+const swaggerDocument = YAML.load('./swagger.yaml');
 
-// Load swagger.yaml using absolute path
-const swaggerDocument = YAML.load(path.join(__dirname, '..', 'swagger.yaml'));
-
-// Create router for swagger docs
-const router = express.Router();
-router.use('/', swaggerUi.serve);
-router.get('/', swaggerUi.setup(swaggerDocument));
+router.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 module.exports = router;
