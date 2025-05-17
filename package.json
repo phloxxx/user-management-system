@@ -14,8 +14,8 @@
     "dev": "nodemon node-mysql-boilerplate-api/server.js",
     "build": "npm run build:backend && npm run build:frontend && npm run copy:dist",
     "build:backend": "cd node-mysql-boilerplate-api && npm install",
-    "build:frontend": "cd angular-signup-verification-boilerplate && npm install && ng build --configuration=production",
-    "copy:dist": "mkdir -p node-mysql-boilerplate-api/public && cp -r angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/* node-mysql-boilerplate-api/public/",
+    "build:frontend": "cd angular-signup-verification-boilerplate && npm install -g @angular/cli && npm install && ng build --configuration=production",
+    "copy:dist": "cp -r angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/* node-mysql-boilerplate-api/public/",
     "copy:dist:win": "if not exist .\\node-mysql-boilerplate-api\\public mkdir .\\node-mysql-boilerplate-api\\public && xcopy .\\angular-signup-verification-boilerplate\\dist\\angular-signup-verification-boilerplate .\\node-mysql-boilerplate-api\\public\\ /E /I /Y",
     "postinstall": "npm run build"
   },

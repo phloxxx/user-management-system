@@ -2,7 +2,10 @@ services:
   - type: web
     name: user-management-system
     env: node
-    buildCommand: npm install -g @angular/cli && npm run build
+    buildCommand: |
+      npm install -g @angular/cli
+      npm install
+      npm run build
     startCommand: node node-mysql-boilerplate-api/server.js
     envVars:
       - key: NODE_ENV
