@@ -5,12 +5,14 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
+const swaggerDocs = require('./_helpers/swagger');
 
 
 app.use(cors({
   origin: 'http://localhost:4200', // Angular app URL
   credentials: true
 }));
+
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -49,7 +51,7 @@ app.use('/workflows', require('./workflows/index'));
 app.use('/requests', require('./requests/index'));  // Make sure this is added
 
 // swagger docs route
-app.use('/api-docs', require('./_helpers/swagger'));
+app.use('/api-docs', swaggerDocs);
 
 // global error handler
 app.use((err, req, res, next) => {
