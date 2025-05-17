@@ -8,7 +8,7 @@ const errorHandler = require('./_middleware/error-handler');
 
 
 app.use(cors({
-  origin: ['http://localhost:4200', 'https://real-user-management-system.onrender.com'],
+  origin: ['http://localhost:4200', 'https://ocliasa-user-management-system.onrender.com'],
   credentials: true
 }));
 
