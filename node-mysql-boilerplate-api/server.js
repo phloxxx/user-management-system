@@ -5,19 +5,13 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const errorHandler = require('./_middleware/error-handler');
-const swaggerDocs = require('./_helpers/swagger');
-const path = require('path');
 
-// CORS configuration
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:4200',
-    credentials: true
+  origin: 'http://localhost:4200', // Angular app URL
+  credentials: true
 }));
 
-// Serve static files from the Angular app
-app.use(express.static(path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate')));
-
-// Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -47,33 +41,15 @@ app.use((req, res, next) => {
     next();
 });
 
+// api routes
+app.use('/accounts', require('./accounts/account.controller'));
+app.use('/departments', require('./departments/index'));
+app.use('/employees', require('./employees/index'));
+app.use('/workflows', require('./workflows/index'));
+app.use('/requests', require('./requests/index'));  // Make sure this is added
 
-// API routes
-app.use('/api/accounts', require('./accounts/account.controller'));
-app.use('/api/departments', require('./departments/index'));
-app.use('/api/employees', require('./employees/index'));
-app.use('/api/workflows', require('./workflows/index'));
-app.use('/api/requests', require('./requests/index'));
-app.use('/api-docs', swaggerDocs);
-// Error handler
-app.use(errorHandler);
-
-// Angular routing - must be after API routes
-app.get('*', (req, res) => {
-    try {
-        const indexPath = path.join(__dirname, 'public', 'index.html');
-        if (!fs.existsSync(indexPath)) {
-            throw new Error(`Frontend files not found. Please build the Angular app first.`);
-        }
-        res.sendFile(indexPath);
-    } catch (err) {
-        console.error('Error serving frontend:', err);
-        res.status(500).send({
-            message: 'Error loading application',
-            details: err.message
-        });
-    }
-});
+// swagger docs route
+app.use('/api-docs', require('./_helpers/swagger'));
 
 // global error handler
 app.use((err, req, res, next) => {
@@ -127,14 +103,6 @@ app.use((err, req, res, next) => {
     }
 });
 
-
-// Start server
-const port = process.env.PORT || 10000;
-app.listen(port, () => {
-    console.log('Server listening on port ' + port);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (error) => {
-    console.error('Unhandled promise rejection:', error);
-});
+// start server
+const port = process.env.NODE_ENV === 'production' ? (process.env.PORT || 80) : 4000;
+app.listen(port, () => console.log('Server listening on port ' + port));
