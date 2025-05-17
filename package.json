@@ -6,12 +6,13 @@
   "scripts": {
     "install:frontend": "cd angular-signup-verification-boilerplate && npm install",
     "install:backend": "cd node-mysql-boilerplate-api && npm install",
-    "install:all": "npm run install:frontend && npm run install:backend",
+    "install:all": "npm run install:backend",
+    "build": "cd node-mysql-boilerplate-api && npm install",
+    "start": "node node-mysql-boilerplate-api/server.js",
     "start:frontend": "cd angular-signup-verification-boilerplate && ng serve",
     "start:backend": "cd node-mysql-boilerplate-api && npm start",
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
-    "start:server": "node node-mysql-boilerplate-api/server.js",
-    "dev": "nodemon node-mysql-boilerplate-api/server.js"
+    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "dev:server": "nodemon node-mysql-boilerplate-api/server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
