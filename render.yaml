@@ -2,16 +2,17 @@ services:
   - type: web
     name: user-management-system
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: |
+      npm install -g @angular/cli
+      npm install
+      cd node-mysql-boilerplate-api 
+      npm install
+      cd ../angular-signup-verification-boilerplate
+      npm install
+      ng build --configuration=production
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
-        value: 22.13.1
-      - key: DATABASE_URL
-        fromDatabase:
-          name: mysql
-          property: connectionString
-
-databases:
-  - name: mysql
-    ipAllowList: []
+        value: 24.0.2
+      - key: NODE_ENV
+        value: production

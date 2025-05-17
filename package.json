@@ -12,7 +12,7 @@
     "start": "node node-mysql-boilerplate-api/server.js",
     "start:dev": "nodemon node-mysql-boilerplate-api/server.js",
     "dev": "nodemon node-mysql-boilerplate-api/server.js",
-    "build": "npm install && cd node-mysql-boilerplate-api && npm install && cd ../angular-signup-verification-boilerplate && npm install && ng build --configuration=production",
+    "build": "npm install && cd node-mysql-boilerplate-api && npm install && cd ../angular-signup-verification-boilerplate && npm install -g @angular/cli && npm install && ng build --configuration=production",
     "build:backend": "cd node-mysql-boilerplate-api && npm install",
     "build:frontend": "cd angular-signup-verification-boilerplate && npm install && ng build --configuration=production"
   },
