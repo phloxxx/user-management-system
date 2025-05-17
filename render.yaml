@@ -1,3 +1,4 @@
+system\render.yaml
 services:
   # Backend API service
   - type: web
@@ -18,9 +19,10 @@ services:
     name: user-management-frontend
     buildCommand: |
       cd angular-signup-verification-boilerplate
+      npm install -g @angular/cli
       npm install
-      npm run build
-    publishPath: angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/browser
+      ng build --configuration=production
+    publishPath: angular-signup-verification-boilerplate/dist/browser
     env:
       - key: NODE_VERSION
         value: 18.0.0
