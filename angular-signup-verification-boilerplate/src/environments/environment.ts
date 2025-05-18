@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'https://ocliasa-user-management-system0.onrender.com'
+  apiUrl: 'http://localhost:4000'
 };
 
 /*
