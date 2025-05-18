@@ -21,7 +21,7 @@ app.use(cookieParser());
 
 // 👉 Serve Angular static files - adjust paths for deployment
 const angularPath = process.env.NODE_ENV === 'production' 
-  ? path.join(__dirname, './public') // This would be a directory where you manually upload built Angular files
+  ? path.join(__dirname, '../angular-signup-verification-boilerplate/dist/angular-signup-verification-boilerplate/browser') 
   : path.join(__dirname, '../angular-signup-verification-boilerplate');
 
 app.use(express.static(angularPath));
