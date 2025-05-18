@@ -9,7 +9,7 @@
     "install:backend": "cd node-mysql-boilerplate-api && npm install",
     "install:all": "npm run install:backend",
     "prebuild": "npm install -g @angular/cli",
-    "build": "cd angular-signup-verification-boilerplate && npm install && ng build --configuration=production",
+    "build": "cd angular-signup-verification-boilerplate && npm install && npx @angular/cli build --configuration=production",
     "start": "cd node-mysql-boilerplate-api && node server.js",
     "start:frontend": "cd angular-signup-verification-boilerplate && ng serve",
     "start:backend": "cd node-mysql-boilerplate-api && npm start",
