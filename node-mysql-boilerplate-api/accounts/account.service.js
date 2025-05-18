@@ -112,6 +112,8 @@ async function revokeToken({ token, ipAddress }) {
 }
 
 async function register(params, origin) {
+    console.log('Registration attempt with origin:', origin);
+    
     // validate
     if (await db.Account.findOne({ where: { email: params.email } })) {
         // send already registered error in email to prevent account enumeration
@@ -132,8 +134,10 @@ async function register(params, origin) {
     // save account
     await account.save();
 
+    console.log('Account created, sending verification email...');
     // send email
     await sendVerificationEmail(account, origin);
+    console.log('Verification email sent successfully');
 }
 
 async function verifyEmail({ token }) {
