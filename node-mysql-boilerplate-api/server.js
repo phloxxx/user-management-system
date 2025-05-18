@@ -8,7 +8,7 @@ const errorHandler = require('./_middleware/error-handler');
 
 
 app.use(cors({
-  origin: ['http://localhost:4200', 'https://ocliasa-user-management-system.onrender.com'],
+  origin: ['http://localhost:4200', 'https://ocliasa-user-management-system0.onrender.com'],
   credentials: true
 }));
 
@@ -46,23 +46,7 @@ app.use('/accounts', require('./accounts/account.controller'));
 app.use('/departments', require('./departments/index'));
 app.use('/employees', require('./employees/index'));
 app.use('/workflows', require('./workflows/index'));
-app.use('/requests', require('./requests/index'));
-
-// Test route for email
-app.get('/test-email', async (req, res, next) => {
-    const sendEmail = require('./_helpers/send-email');
-    try {
-        await sendEmail({
-            to: 'test@example.com',
-            subject: 'Test Email',
-            html: '<p>This is a test email</p>'
-        });
-        res.json({ message: 'Test email sent successfully' });
-    } catch (error) {
-        console.error('Error sending test email:', error);
-        next(error);
-    }
-});
+app.use('/requests', require('./requests/index'));  
 
 // swagger docs route
 app.use('/api-docs', require('./_helpers/swagger'));
@@ -73,21 +57,6 @@ app.use((err, req, res, next) => {
     
     if (err.stack) {
         console.error('Error stack:', err.stack);
-    }
-    
-    // Add specific handling for nodemailer errors
-    if (err.code === 'ECONNECTION' || err.code === 'EAUTH' || err.command === 'CONN') {
-        console.error('Email sending error details:', {
-            code: err.code,
-            command: err.command,
-            response: err.response,
-            responseCode: err.responseCode,
-            info: err
-        });
-        return res.status(500).json({ 
-            message: 'Failed to send email',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined
-        });
     }
     
     // Add specific handling for Sequelize errors
