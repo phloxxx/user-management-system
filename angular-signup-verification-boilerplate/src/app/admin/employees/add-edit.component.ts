@@ -46,13 +46,20 @@ export class AddEditComponent implements OnInit {
 
   ngOnInit() {
     this.id = this.route.snapshot.params['id'];
-    this.isEditMode = !!this.id;
-    
-    // Load departments
+    this.isEditMode = !!this.id;    // Load departments
     this.departmentService.getAll()
       .pipe(first())
       .subscribe({
-        next: (departments) => this.departments = departments,
+        next: (departments) => {
+          this.departments = departments;
+          // Make sure department IDs are numbers
+          this.departments.forEach(dept => {
+            if (dept.id && typeof dept.id === 'string') {
+              dept.id = parseInt(dept.id, 10);
+            }
+          });
+          console.log('Loaded departments:', this.departments);
+        },
         error: (error) => this.alertService.error('Error loading departments: ' + error)
       });
       
@@ -66,13 +73,19 @@ export class AddEditComponent implements OnInit {
         },
         error: (error) => this.alertService.error('Error loading users: ' + error)
       });
-    
-    if (this.isEditMode) {
+      if (this.isEditMode) {
       // Load employee data
       this.employeeService.getById(this.id)
         .pipe(first())
         .subscribe({
-          next: (employee) => this.employee = employee,
+          next: (employee) => {
+            this.employee = employee;
+            // Ensure departmentId is a number for the dropdown to work properly
+            if (this.employee.departmentId && typeof this.employee.departmentId === 'string') {
+              this.employee.departmentId = parseInt(this.employee.departmentId, 10);
+            }
+            console.log('Loaded employee data:', this.employee);
+          },
           error: (error) => {
             this.alertService.error('Error loading employee: ' + error);
             this.errorMessage = 'Could not load employee data';
@@ -147,7 +160,6 @@ export class AddEditComponent implements OnInit {
   isAdmin(): boolean {
     return this.accountService.accountValue?.role === Role.Admin;
   }
-
   // Generate a new employee ID based on existing format
   private generateEmployeeId() {
     if (this.allEmployees.length === 0) {
@@ -176,6 +188,10 @@ export class AddEditComponent implements OnInit {
     const nextNumber = highestNumber + 1;
     const paddedNumber = nextNumber.toString().padStart(3, '0');
     this.employee.employeeId = `${prefix}${paddedNumber}`;
+    console.log('Generated employee ID:', this.employee.employeeId);
+    
+    // Debug existing departments
+    console.log('Current departments data:', this.departments);
   }
 
   // Load all employees to check which accounts are already assigned
