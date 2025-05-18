@@ -4,6 +4,7 @@
   "description": "Integrated User Management System",
   "main": "node-mysql-boilerplate-api/server.js",
   "scripts": {
+    "preinstall": "cd node-mysql-boilerplate-api && npm install",
     "install:frontend": "cd angular-signup-verification-boilerplate && npm install",
     "install:backend": "cd node-mysql-boilerplate-api && npm install",
     "install:all": "npm run install:frontend && npm run install:backend",
