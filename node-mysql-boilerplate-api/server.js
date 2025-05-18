@@ -19,8 +19,12 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-// 👉 Serve Angular static files
-app.use(express.static(path.join(__dirname, '../angular-signup-verification-boilerplate')));
+// 👉 Serve Angular static files - adjust paths for deployment
+const angularPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, './public') // This would be a directory where you manually upload built Angular files
+  : path.join(__dirname, '../angular-signup-verification-boilerplate');
+
+app.use(express.static(angularPath));
 
 // Logging
 app.use((req, res, next) => {
@@ -55,7 +59,14 @@ app.use('/api-docs', require('./_helpers/swagger'));
 
 // 👉 Catch-all to serve Angular app for unknown routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../angular-signup-verification-boilerplate/index.html'));
+  const indexPath = path.join(angularPath, 'index.html');
+  
+  res.sendFile(indexPath, err => {
+    if (err) {
+      console.error('Error serving index.html:', err);
+      res.status(404).send('Application frontend not found.');
+    }
+  });
 });
 
 // Global error handler

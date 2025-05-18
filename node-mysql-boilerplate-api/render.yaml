@@ -1,0 +1,9 @@
+services:
+  - name: durano-final-project-system
+    type: web
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
