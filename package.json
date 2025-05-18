@@ -16,6 +16,7 @@
     "dev:server": "nodemon node-mysql-boilerplate-api/server.js"
   },
   "dependencies": {
+    "bootstrap": "^5.3.6",
     "concurrently": "^8.2.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
