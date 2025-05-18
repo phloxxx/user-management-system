@@ -10,7 +10,7 @@ const errorHandler = require('./_middleware/error-handler');
 
 // CORS config
 app.use(cors({
-  origin: 'https://durano-final-project-system.onrender.com',
+  origin: 'https://user-management-system-ghoq.onrender.com',
   credentials: true
 }));
 

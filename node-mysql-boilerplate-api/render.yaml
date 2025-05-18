@@ -1,5 +1,5 @@
 services:
-  - name: durano-final-project-system
+  - name: https://user-management-system-ghoq.onrender.com
     type: web
     env: node
     buildCommand: npm install && cd ../angular-signup-verification-boilerplate && npm install && npm run build -- --configuration production && mkdir -p ../node-mysql-boilerplate-api/public && cp -r dist/angular-signup-verification-boilerplate/browser/* ../node-mysql-boilerplate-api/public/
