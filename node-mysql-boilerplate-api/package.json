@@ -4,6 +4,7 @@
   "description": "NodeJS and MySQL API for Email Sign Up with Verification, Authentication & Forgot Password",
   "license": "MIT",
   "scripts": {
+    "postinstall": "cd ../angular-signup-verification-boilerplate && npm install && npm run build -- --configuration production && mkdir -p ../node-mysql-boilerplate-api/public && cp -r dist/angular-signup-verification-boilerplate/browser/* ../node-mysql-boilerplate-api/public/",
     "start": "node ./server.js",
     "start:dev": "nodemon ./server.js"
   },
@@ -13,11 +14,11 @@
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "express-jwt": "^6.1.2",
+    "express-jwt": "^6.0.0",
     "joi": "^17.2.1",
     "jsonwebtoken": "^8.5.1",
     "mysql2": "^2.1.0",
-    "nodemailer": "^6.10.1",
+    "nodemailer": "^6.4.11",
     "passport": "^0.4.1",
     "rootpath": "^0.1.2",
     "sequelize": "^6.3.4",
