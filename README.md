@@ -16,8 +16,6 @@ git clone https://github.com/phloxxx/user-management-system.git
 
 ```
 npm install
-npm install:all
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
 ### 3. Start the backend server:
